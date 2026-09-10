@@ -10,10 +10,13 @@ Tick every line. A line that fails blocks the release; fix, re-run the suite, re
 - [ ] Power off from the app; the app shows standby within 5 s.
 - [ ] Volume up/down/mute while the TV is on Audio system changes the **Sonos**; the screen says "Sonos".
 - [ ] Switch output to TV speakers; volume buttons now change the TV; switch back.
-- [ ] Inputs list shows "Game", "Roku" and the eARC entry by name; tapping Roku switches the TV to HDMI 4.
+- [ ] Inputs list shows "Roku Ultra" and "Sonos Arc" by CEC name, stale or unconnected HDMI ports hidden; tapping Roku Ultra switches the TV to the Roku (HDMI 2).
 - [ ] Apps row launches Prime Video, YouTube, Netflix; the state line names the running app.
 - [ ] D-pad, Back, Home and play/pause reach the TV; holding Right repeats.
 - [ ] Type on the TV: text typed on the phone lands in a TV search box.
+- [ ] Type with no TV text box open: the app says so in plain words (no raw Illegal State error).
+- [ ] Voice: mic button, say "volume up", "open prime", "switch to roku", "pause"; each lands and the words shown match.
+- [ ] Minimise the app for a minute, reopen: the remote is still drawn (Reconnecting banner at most), never the connect screen.
 - [ ] Fix the sound: output → Audio system and the Arc → TV input, confirmed on the Sonos app.
 - [ ] Roku tile: Home, D-pad, OK, Back, play/pause and app launch reach the Roku.
 - [ ] Self-test: all green; Copy report produces a paste-able block.

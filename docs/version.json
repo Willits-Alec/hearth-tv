@@ -1,7 +1,7 @@
 {
-  "versionCode": 2,
-  "versionName": "0.1.0",
+  "versionCode": 4,
+  "versionName": "0.2.0",
   "apkUrl": "https://github.com/Willits-Alec/hearth-tv/releases/latest/download/hearth-tv.apk",
-  "notes": "First real build: setup wizard (find TV, PIN pairing, find Sonos), the remote screen (power, volume routed to the Sonos, inputs, apps, D-pad, sound, type on the TV) and Diagnostics with a self-test.",
-  "publishedAt": "2026-09-10T16:25:21Z"
+  "notes": "Voice control from the mic button, a clear message when you type but no TV text box is open, and the remote stays connected when you come back to the app.",
+  "publishedAt": "2026-09-10T17:42:47Z"
 }
