@@ -43,6 +43,7 @@ import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.PowerSettingsNew
 import androidx.compose.material.icons.rounded.RecordVoiceOver
 import androidx.compose.material.icons.rounded.Refresh
+import androidx.compose.material.icons.rounded.Replay
 import androidx.compose.material.icons.rounded.Send
 import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material.icons.rounded.Stop
@@ -71,6 +72,7 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.runtime.Composable
@@ -95,8 +97,10 @@ import com.alec.hearthtv.protocol.bravia.InputKind
 import com.alec.hearthtv.protocol.bravia.SoundOutput
 import com.alec.hearthtv.protocol.bravia.TvApp
 import com.alec.hearthtv.protocol.bravia.TvInput
+import com.alec.hearthtv.protocol.roku.RokuApp
 import com.alec.hearthtv.remote.PairingState
 import com.alec.hearthtv.remote.RemoteUiState
+import com.alec.hearthtv.remote.RokuState
 import com.alec.hearthtv.remote.SonosState
 import com.alec.hearthtv.remote.TvState
 import com.alec.hearthtv.remote.VolumeTarget
@@ -107,6 +111,12 @@ import kotlinx.coroutines.launch
 private val FAVOURITES = listOf(
     "Prime Video", "YouTube", "Netflix", "Apple TV", "Hulu", "Paramount+", "Peacock TV", "Disney+", "Max",
     "Spotify", "Pandora", "Plex", "YouTube Music",
+)
+
+/** The Roku names its channels a little differently from the TV. */
+private val ROKU_FAVOURITES = listOf(
+    "Prime Video", "YouTube", "Netflix", "Paramount Plus", "Hulu", "Disney Plus", "Max", "Apple TV", "Peacock TV",
+    "Plex - Free Movies & TV", "Pandora", "Spotify", "YouTube TV",
 )
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -185,6 +195,7 @@ fun RemoteScreen(vm: RemoteViewModel, onOpenSetup: () -> Unit, onOpenDiagnostics
                     VolumeCluster(ui, shown, onDown = { vm.volumeDown() }, onMute = { haptic.tick(); vm.toggleMute() }, onUp = { vm.volumeUp() })
                     InputsRow(shown.inputs, shown.nowPlaying) { vm.selectInput(it) }
                     AppsRow(shown.apps, shown.nowPlaying) { vm.launchApp(it) }
+                    RokuCard(ui.roku, shown, onHome = { haptic.tick(); vm.rokuHome() }, onKey = { haptic.tick(); vm.rokuKey(it) }, onArrow = { vm.rokuKey(it) }, onLaunch = { haptic.tick(); vm.rokuLaunch(it) })
                     DPad(onKey = press, onArrow = { vm.key(it) })
                     MediaRow(onKey = press)
                     MoreKeys(onKey = press)
@@ -350,6 +361,90 @@ private fun DPad(onKey: (String) -> Unit, onArrow: (String) -> Unit) {
                 SmallKey(Icons.Rounded.Menu, "Menu", Modifier.weight(1f)) { onKey("ActionMenu") }
                 SmallKey(Icons.Rounded.Info, "Info", Modifier.weight(1f)) { onKey("Display") }
             }
+        }
+    }
+}
+
+// ── Roku (Stage 2b) ─────────────────────────────────────────────────────────────────────────────────
+
+/**
+ * The Roku section: its name and what it is showing, a Home / Switch-to-Roku button, and — once the Roku is on
+ * screen — its own D-pad, transport keys and channel list. Limited mode and an unreachable box explain themselves.
+ */
+@Composable
+private fun RokuCard(roku: RokuState, tv: TvState.On, onHome: () -> Unit, onKey: (String) -> Unit, onArrow: (String) -> Unit, onLaunch: (String) -> Unit) {
+    if (roku is RokuState.Absent) return
+    val rokuInput = tv.inputs.firstOrNull { it.kind == InputKind.CEC_DEVICE && it.title.contains("roku", ignoreCase = true) }
+    val inFront = rokuInput != null && (rokuInput.active || tv.nowPlaying == rokuInput.displayName)
+    var forceOpen by rememberSaveable { mutableStateOf(false) }
+    Section("Roku")
+    Card(colors = CardDefaults.cardColors(containerColor = Slate), shape = RoundedCornerShape(20.dp)) {
+        Column(Modifier.padding(14.dp).fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            when (roku) {
+                is RokuState.Unreachable -> Text(roku.hint, color = Bad, style = MaterialTheme.typography.bodySmall)
+                is RokuState.Limited -> Text(roku.hint, color = Bad, style = MaterialTheme.typography.bodySmall)
+                is RokuState.Ready -> {
+                    val showing = if (roku.onHome) "Home screen" else roku.activeApp ?: "…"
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Column(Modifier.weight(1f)) {
+                            Text(roku.name, style = MaterialTheme.typography.titleMedium)
+                            Text(showing + if (inFront) "" else " · not on the TV yet", color = PaperDim, style = MaterialTheme.typography.bodySmall)
+                        }
+                        Button(onClick = onHome, colors = ButtonDefaults.buttonColors(containerColor = Ember, contentColor = Ink)) {
+                            Text(if (inFront) "Home" else "Switch to Roku")
+                        }
+                    }
+                    if (inFront || forceOpen) {
+                        RokuPad(onKey, onArrow)
+                        RokuApps(roku.apps, roku.activeApp, onLaunch)
+                    } else {
+                        TextButton(onClick = { forceOpen = true }) { Text("Show the Roku controls anyway") }
+                    }
+                }
+                RokuState.Absent -> Unit
+            }
+        }
+    }
+}
+
+@Composable
+private fun RokuPad(onKey: (String) -> Unit, onArrow: (String) -> Unit) {
+    val arrow = Modifier.size(width = 84.dp, height = 48.dp)
+    Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        HoldButton(Icons.Rounded.KeyboardArrowUp, "Up", { onArrow("Up") }, arrow)
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+            HoldButton(Icons.Rounded.KeyboardArrowLeft, "Left", { onArrow("Left") }, arrow)
+            Button(
+                onClick = { onKey("Select") }, modifier = Modifier.size(72.dp), shape = CircleShape,
+                colors = ButtonDefaults.buttonColors(containerColor = SlateLight, contentColor = Paper),
+            ) { Text("OK", fontWeight = FontWeight.Bold) }
+            HoldButton(Icons.Rounded.KeyboardArrowRight, "Right", { onArrow("Right") }, arrow)
+        }
+        HoldButton(Icons.Rounded.KeyboardArrowDown, "Down", { onArrow("Down") }, arrow)
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            SmallKey(Icons.Rounded.ArrowBack, "Back", Modifier.weight(1f)) { onKey("Back") }
+            SmallKey(Icons.Rounded.Replay, "Replay", Modifier.weight(1f)) { onKey("InstantReplay") }
+            SmallKey(Icons.Rounded.FastRewind, "Rewind", Modifier.weight(1f)) { onKey("Rev") }
+            SmallKey(Icons.Rounded.PlayArrow, "Play / Pause", Modifier.weight(1f)) { onKey("Play") }
+            SmallKey(Icons.Rounded.FastForward, "Forward", Modifier.weight(1f)) { onKey("Fwd") }
+            SmallKey(Icons.Rounded.Info, "Options", Modifier.weight(1f)) { onKey("Info") }
+        }
+    }
+}
+
+@Composable
+private fun RokuApps(apps: List<RokuApp>, active: String?, onLaunch: (String) -> Unit) {
+    if (apps.isEmpty()) return
+    var showAll by rememberSaveable { mutableStateOf(false) }
+    val favourites = ROKU_FAVOURITES.mapNotNull { name -> apps.firstOrNull { it.name.equals(name, ignoreCase = true) } }
+    val list = if (showAll) apps.sortedBy { it.name.lowercase() } else favourites.ifEmpty { apps.take(8) }
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Text("Roku channels", color = PaperDim, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
+        OutlinedButton(onClick = { showAll = !showAll }) { Text(if (showAll) "Favourites" else "All ${apps.size}") }
+    }
+    LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp), contentPadding = PaddingValues(end = 8.dp)) {
+        items(list, key = { it.id }) { app ->
+            FilterChip(selected = active == app.name, onClick = { onLaunch(app.id) }, label = { Text(app.name) })
         }
     }
 }

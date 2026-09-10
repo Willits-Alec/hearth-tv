@@ -20,7 +20,10 @@ Tick every line. A line that fails blocks the release; fix, re-run the suite, re
 - [ ] Voice: mic button, say "volume up", "open prime", "switch to roku", "pause"; each lands and the words shown match.
 - [ ] Minimise the app for a minute, reopen: the remote is still drawn (Reconnecting banner at most), never the connect screen.
 - [ ] Fix the sound: output → Audio system and the Arc → TV input, confirmed on the Sonos app.
-- [ ] Roku tile: Home, D-pad, OK, Back, play/pause and app launch reach the Roku.
+- [ ] Setup step 4 finds the Roku (or takes its address); skipping it hides the Roku card entirely.
+- [ ] Roku card: Switch to Roku puts it on screen, then Home, the pad, OK, Back, replay and play/pause reach the box.
+- [ ] Roku channels: a chip launches it, and the card names what is showing.
+- [ ] Self-test: Roku reachable and Roku control are green (a locked box names the Network-access fix instead).
 - [ ] Self-test: all green, including TV discoverable, TV wake-on-LAN = enabled, Update check = up to date; Copy report produces a paste-able block.
 - [ ] Diagnostics → Recent errors: a deliberately failed action (type with no text box open) appears with a time; Copy report includes it; Clear empties it.
 - [ ] Setup → pairing step → "Use a pre-shared key" shows the key field and the TV-menu path (no need to complete it).

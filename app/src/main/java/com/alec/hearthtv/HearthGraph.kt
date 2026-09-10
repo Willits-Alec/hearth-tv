@@ -12,6 +12,7 @@ import com.alec.hearthtv.protocol.SsdpDiscovery
 import com.alec.hearthtv.protocol.WakeOnLan
 import com.alec.hearthtv.protocol.bravia.BraviaClient
 import com.alec.hearthtv.protocol.bravia.BraviaCredentials
+import com.alec.hearthtv.protocol.roku.RokuClient
 import com.alec.hearthtv.protocol.sonos.SonosClient
 import com.alec.hearthtv.remote.RemoteController
 import com.alec.hearthtv.remote.TvRelocator
@@ -43,6 +44,8 @@ object HearthGraph {
 
     fun sonos(host: String): SonosClient = SonosClient("http://$host:1400", transport.http())
 
+    fun roku(host: String): RokuClient = RokuClient("http://$host:8060", transport.http())
+
     fun controller(s: AppSettings): RemoteController? {
         val host = s.tvHost ?: return null
         return RemoteController(
@@ -53,6 +56,7 @@ object HearthGraph {
             wakeOnLan = { mac -> WakeOnLan.send(mac, socketProvider = { transport.udpSocket() }) },
             clientId = s.clientId,
             errors = errorLog,
+            roku = s.rokuHost?.let { roku(it) },
         )
     }
 
@@ -65,6 +69,7 @@ object HearthGraph {
             discover = { findSonyTvs() },
             tvHost = host,
             update = { updateChecker().check() },
+            roku = s.rokuHost?.let { roku(it) },
         )
     }
 
@@ -73,6 +78,10 @@ object HearthGraph {
     /** Hosts of every Sony TV that answers the SSDP search, in the order they answered. */
     suspend fun findSonyTvs(): List<String> =
         withMulticast { discovery().search(SsdpDiscovery.ST_SONY_SCALAR, timeoutMs = 3000) }.map { it.host }.distinct()
+
+    /** Hosts of every Roku that answers the SSDP search. */
+    suspend fun findRokus(): List<String> =
+        withMulticast { discovery().search(SsdpDiscovery.ST_ROKU, timeoutMs = 3000) }.map { it.host }.distinct()
 
     /** Finds the TV again by MAC when DHCP has moved it (SCOPE.md §4.2). */
     fun relocator(): TvRelocator = TvRelocator(discover = { findSonyTvs() }, macOf = { host -> bravia(host).wolMac() })

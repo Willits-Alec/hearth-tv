@@ -3,6 +3,7 @@ package com.alec.hearthtv.remote
 import com.alec.hearthtv.protocol.bravia.SoundOutput
 import com.alec.hearthtv.protocol.bravia.TvApp
 import com.alec.hearthtv.protocol.bravia.TvInput
+import com.alec.hearthtv.protocol.roku.RokuApp
 import com.alec.hearthtv.protocol.sonos.SourceKind
 
 sealed class TvState {
@@ -32,6 +33,14 @@ sealed class SonosState {
     ) : SonosState()
 }
 
+sealed class RokuState {
+    data object Absent : RokuState()
+    data class Unreachable(val hint: String) : RokuState()
+    /** The box refuses control until its network access is set to Default; [hint] says how (SCOPE.md §3). */
+    data class Limited(val hint: String) : RokuState()
+    data class Ready(val name: String, val activeApp: String?, val onHome: Boolean, val apps: List<RokuApp>) : RokuState()
+}
+
 sealed class PairingState {
     data object Unknown : PairingState()
     data object Paired : PairingState()
@@ -45,6 +54,7 @@ enum class VolumeTarget { SONOS, TV }
 data class RemoteUiState(
     val tv: TvState = TvState.Unknown,
     val sonos: SonosState = SonosState.Absent,
+    val roku: RokuState = RokuState.Absent,
     val pairing: PairingState = PairingState.Unknown,
     val busy: Boolean = false,
     val lastError: String? = null,

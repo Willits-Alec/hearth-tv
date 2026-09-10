@@ -2,10 +2,13 @@ package com.alec.hearthtv.remote
 
 import com.alec.hearthtv.diagnostics.ErrorLog
 import com.alec.hearthtv.fakes.FakeBraviaServer
+import com.alec.hearthtv.fakes.FakeRoku
 import com.alec.hearthtv.fakes.FakeSonos
 import com.alec.hearthtv.protocol.bravia.BraviaClient
 import com.alec.hearthtv.protocol.bravia.BraviaCredentials
 import com.alec.hearthtv.protocol.bravia.SoundOutput
+import com.alec.hearthtv.protocol.roku.RokuClient
+import com.alec.hearthtv.protocol.roku.RokuException
 import com.alec.hearthtv.protocol.sonos.SonosClient
 import com.alec.hearthtv.protocol.sonos.SourceKind
 import kotlinx.coroutines.launch
@@ -30,6 +33,7 @@ import java.util.concurrent.TimeUnit
 class RemoteControllerTest {
     private lateinit var tv: FakeBraviaServer
     private lateinit var arc: FakeSonos
+    private lateinit var roku: FakeRoku
     private lateinit var creds: InMemoryCredentialStore
     private val http = OkHttpClient.Builder().callTimeout(5, TimeUnit.SECONDS).build()
     private val wolSent = mutableListOf<String>()
@@ -38,12 +42,13 @@ class RemoteControllerTest {
     @Before fun start() {
         tv = FakeBraviaServer()
         arc = FakeSonos()
+        roku = FakeRoku()
         creds = InMemoryCredentialStore()
     }
 
-    @After fun stop() { tv.close(); arc.close() }
+    @After fun stop() { tv.close(); arc.close(); roku.close() }
 
-    private fun controller(paired: Boolean = true, withSonos: Boolean = true): RemoteController {
+    private fun controller(paired: Boolean = true, withSonos: Boolean = true, withRoku: Boolean = false): RemoteController {
         if (paired) creds.saved = BraviaCredentials.Cookie(tv.cookieValue, null)
         val bravia = BraviaClient(tv.baseUrl, http, creds.saved)
         return RemoteController(
@@ -55,6 +60,7 @@ class RemoteControllerTest {
             pollDelayMs = 5,
             powerOnTimeoutMs = 2000,
             errors = errors,
+            roku = if (withRoku) RokuClient(roku.baseUrl, http) else null,
         )
     }
 
@@ -265,6 +271,70 @@ class RemoteControllerTest {
         val unknown = c.voice("make me a sandwich")
         assertTrue(unknown.contains("Didn't catch"))
         assertTrue(unknown.contains("make me a sandwich"))
+    }
+
+    // ── Roku (Stage 2b) ────────────────────────────────────────────────────────────────────────────
+
+    @Test fun `refresh with a Roku fills its state from the box`() = runTest {
+        val c = controller(withRoku = true)
+        c.refresh()
+        val r = c.state.value.roku as RokuState.Ready
+        assertEquals("Test Room Roku", r.name)
+        assertEquals("Backdrops", r.activeApp)
+        assertFalse(r.onHome)
+        assertEquals(61, r.apps.size)
+        assertTrue(c.state.value.tv is TvState.On)
+    }
+
+    @Test fun `launching a Roku app switches the TV to the Roku first`() = runTest {
+        val c = controller(withRoku = true)
+        c.refresh()
+        assertNull(tv.activeInputUri)                                   // the TV launcher is up
+        c.rokuLaunch("13")
+        assertEquals("extInput:cec?type=player&port=2&logicalAddr=4", tv.activeInputUri)
+        assertEquals("Prime Video", roku.activeAppName)
+        assertEquals("Prime Video", (c.state.value.roku as RokuState.Ready).activeApp)
+        assertEquals("Roku Ultra", (c.state.value.tv as TvState.On).nowPlaying)
+        assertNull(c.state.value.lastError)
+    }
+
+    @Test fun `Roku keys reach the box and Home brings it forward`() = runTest {
+        val c = controller(withRoku = true)
+        c.refresh()
+        c.rokuKey("Select")
+        assertNull(tv.activeInputUri)                                   // a plain key never switches inputs
+        c.rokuKey("Home")
+        assertEquals(listOf("Select", "Home"), roku.keys)
+        assertEquals("extInput:cec?type=player&port=2&logicalAddr=4", tv.activeInputUri)
+        assertTrue((c.state.value.roku as RokuState.Ready).onHome)
+    }
+
+    @Test fun `a Roku in Limited mode shows the unlock instruction and the TV keeps working`() = runTest {
+        roku.limitedMode = true
+        val c = controller(withRoku = true)
+        c.refresh()
+        val r = c.state.value.roku
+        assertTrue("$r", r is RokuState.Limited)
+        assertTrue((r as RokuState.Limited).hint.contains("Network access"))
+        assertTrue(c.state.value.tv is TvState.On)
+        c.rokuKey("Select")
+        assertEquals(RokuException.LIMITED_HINT, c.state.value.lastError)
+        assertTrue(roku.keys.isEmpty())
+        assertEquals(1, errors.entries.value.count { it.source == "roku" && it.message.contains("Limited") })
+    }
+
+    @Test fun `a Roku off the network is Unreachable without touching the TV state`() = runTest {
+        val gone = FakeRoku()
+        val url = gone.baseUrl
+        gone.close()
+        val c = RemoteController(
+            tv = BraviaClient(tv.baseUrl, http, BraviaCredentials.Cookie(tv.cookieValue, null)), sonos = null,
+            credentials = creds, tvMac = null, wakeOnLan = {}, errors = errors, roku = RokuClient(url, http),
+        )
+        c.refresh()
+        assertTrue(c.state.value.roku is RokuState.Unreachable)
+        assertTrue(c.state.value.tv is TvState.On)
+        assertEquals("roku", errors.entries.value.single().source)
     }
 
     // ── error log (Diagnostics) ────────────────────────────────────────────────────────────────────

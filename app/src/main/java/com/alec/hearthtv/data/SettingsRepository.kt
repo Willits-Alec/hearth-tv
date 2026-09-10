@@ -23,6 +23,7 @@ data class AppSettings(
     val sonosHost: String? = null,
     val sonosName: String? = null,
     val rokuHost: String? = null,
+    val rokuName: String? = null,
     val cookie: String? = null,
     val cookieExpiresAt: Long? = null,
     val psk: String? = null,
@@ -48,6 +49,7 @@ class SettingsRepository(private val context: Context) : CredentialStore {
         val sonosHost = stringPreferencesKey("sonos_host")
         val sonosName = stringPreferencesKey("sonos_name")
         val rokuHost = stringPreferencesKey("roku_host")
+        val rokuName = stringPreferencesKey("roku_name")
         val cookie = stringPreferencesKey("tv_cookie")
         val cookieExpiresAt = longPreferencesKey("tv_cookie_expires_at")
         val psk = stringPreferencesKey("tv_psk")
@@ -72,7 +74,7 @@ class SettingsRepository(private val context: Context) : CredentialStore {
             fun put(key: Preferences.Key<String>, value: String?) { if (value.isNullOrBlank()) p.remove(key) else p[key] = value }
             p[Keys.clientId] = after.clientId
             put(Keys.tvHost, after.tvHost); put(Keys.tvMac, after.tvMac); put(Keys.tvModel, after.tvModel)
-            put(Keys.sonosHost, after.sonosHost); put(Keys.sonosName, after.sonosName); put(Keys.rokuHost, after.rokuHost)
+            put(Keys.sonosHost, after.sonosHost); put(Keys.sonosName, after.sonosName); put(Keys.rokuHost, after.rokuHost); put(Keys.rokuName, after.rokuName)
             put(Keys.cookie, after.cookie); put(Keys.psk, after.psk)
             if (after.cookieExpiresAt == null) p.remove(Keys.cookieExpiresAt) else p[Keys.cookieExpiresAt] = after.cookieExpiresAt
         }
@@ -93,7 +95,7 @@ class SettingsRepository(private val context: Context) : CredentialStore {
     private fun Preferences.toSettings() = AppSettings(
         clientId = this[Keys.clientId] ?: "",
         tvHost = this[Keys.tvHost], tvMac = this[Keys.tvMac], tvModel = this[Keys.tvModel],
-        sonosHost = this[Keys.sonosHost], sonosName = this[Keys.sonosName], rokuHost = this[Keys.rokuHost],
+        sonosHost = this[Keys.sonosHost], sonosName = this[Keys.sonosName], rokuHost = this[Keys.rokuHost], rokuName = this[Keys.rokuName],
         cookie = this[Keys.cookie], cookieExpiresAt = this[Keys.cookieExpiresAt], psk = this[Keys.psk],
     )
 }

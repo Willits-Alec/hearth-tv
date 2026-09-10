@@ -1,9 +1,11 @@
 package com.alec.hearthtv.diagnostics
 
 import com.alec.hearthtv.fakes.FakeBraviaServer
+import com.alec.hearthtv.fakes.FakeRoku
 import com.alec.hearthtv.fakes.FakeSonos
 import com.alec.hearthtv.protocol.bravia.BraviaClient
 import com.alec.hearthtv.protocol.bravia.BraviaCredentials
+import com.alec.hearthtv.protocol.roku.RokuClient
 import com.alec.hearthtv.protocol.sonos.SonosClient
 import com.alec.hearthtv.update.UpdateStatus
 import kotlinx.coroutines.test.runTest
@@ -22,7 +24,7 @@ class SelfTestTest {
     private val http = OkHttpClient.Builder().callTimeout(5, TimeUnit.SECONDS).build()
 
     @Test fun `everything green on a paired TV with a Sonos, discovery and the update page`() = runTest {
-        FakeBraviaServer().use { tv -> FakeSonos().use { arc ->
+        FakeBraviaServer().use { tv -> FakeSonos().use { arc -> FakeRoku().use { box ->
             val host = tv.baseUrl.removePrefix("http://")
             val report = SelfTest(
                 tv = BraviaClient(tv.baseUrl, http, BraviaCredentials.Cookie(tv.cookieValue, null)),
@@ -31,11 +33,12 @@ class SelfTestTest {
                 discover = { listOf(host) },
                 tvHost = host,
                 update = { UpdateStatus.UpToDate },
+                roku = RokuClient(box.baseUrl, http),
             ).run()
             assertTrue(report.text(), report.allPassed)
             val names = report.checks.map { it.name }
             assertEquals(
-                listOf("TV discoverable", "TV reachable", "TV paired", "TV wake-on-LAN", "TV power", "TV inputs", "TV volume", "TV sound output", "TV remote codes", "Sonos reachable", "Sonos group", "Update check"),
+                listOf("TV discoverable", "TV reachable", "TV paired", "TV wake-on-LAN", "TV power", "TV inputs", "TV volume", "TV sound output", "TV remote codes", "Sonos reachable", "Sonos group", "Roku reachable", "Roku control", "Update check"),
                 names,
             )
             val text = report.text()
@@ -44,6 +47,22 @@ class SelfTestTest {
             assertTrue(text.contains("PASS  TV wake-on-LAN — enabled"))
             assertTrue(text.contains("PASS  Sonos reachable — Sonos Arc"))
             assertTrue(text.contains("PASS  Update check — up to date"))
+            assertTrue(text.contains("PASS  Roku control — 61 channels"))
+        } } }
+    }
+
+    @Test fun `a Roku in Limited mode fails only its control check, with the unlock path`() = runTest {
+        FakeBraviaServer().use { tv -> FakeRoku().use { box ->
+            box.limitedMode = true
+            val report = SelfTest(
+                tv = BraviaClient(tv.baseUrl, http, BraviaCredentials.Cookie(tv.cookieValue, null)),
+                sonos = null, appVersion = "t", roku = RokuClient(box.baseUrl, http),
+            ).run()
+            val byName = report.checks.associateBy { it.name }
+            assertTrue(byName.getValue("Roku reachable").passed)
+            assertFalse(byName.getValue("Roku control").passed)
+            assertTrue(byName.getValue("Roku control").detail.contains("Network access"))
+            assertTrue(byName.filterKeys { it.startsWith("TV ") }.values.all { it.passed })
         } }
     }
 

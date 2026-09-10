@@ -9,6 +9,9 @@ import com.alec.hearthtv.protocol.bravia.PairingStart
 import com.alec.hearthtv.protocol.bravia.PowerState
 import com.alec.hearthtv.protocol.bravia.SoundOutput
 import com.alec.hearthtv.protocol.bravia.TvApp
+import com.alec.hearthtv.protocol.bravia.TvInput
+import com.alec.hearthtv.protocol.roku.RokuClient
+import com.alec.hearthtv.protocol.roku.RokuException
 import com.alec.hearthtv.protocol.sonos.SonosClient
 import com.alec.hearthtv.protocol.sonos.SonosException
 import com.alec.hearthtv.voice.VoiceCommand
@@ -36,10 +39,13 @@ class RemoteController(
     private val powerOnTimeoutMs: Long = 15_000,
     /** Every failure lands here with a timestamp for the Diagnostics screen (SCOPE.md §4.2). */
     private val errors: ErrorLog = ErrorLog(),
+    /** The Roku on one of the TV's HDMI ports, when the owner picked one in Setup (Stage 2b). */
+    private val roku: RokuClient? = null,
 ) {
     companion object {
         const val WIFI_HINT = "Can't reach the TV. Is this phone on the home Wi-Fi, and is the TV plugged in?"
         const val SONOS_HINT = "Can't reach the Sonos. Is it powered and on the home Wi-Fi?"
+        const val ROKU_HINT = "Can't reach the Roku. Is it plugged in and on the home Wi-Fi?"
     }
 
     private val _state = MutableStateFlow(RemoteUiState())
@@ -58,10 +64,11 @@ class RemoteController(
         if (!quiet) _state.update { it.copy(busy = true, lastError = null) }
         val (tvState, pairing) = readTv()
         val sonosState = readSonos()
+        val rokuState = readRoku()
         _state.update { s ->
             val lastKnown = (tvState as? TvState.On) ?: s.lastKnown
             s.copy(
-                tv = tvState, pairing = pairing, sonos = sonosState, busy = false,
+                tv = tvState, pairing = pairing, sonos = sonosState, roku = rokuState, busy = false,
                 lastKnown = lastKnown,
                 reconnecting = tvState is TvState.Unreachable && lastKnown != null,
             )
@@ -113,6 +120,22 @@ class RemoteController(
         } catch (e: SonosException) {
             if (_state.value.sonos !is SonosState.Unreachable) errors.record("sonos", "unreachable: ${e.message}")
             SonosState.Unreachable(SONOS_HINT)
+        }
+    }
+
+    private suspend fun readRoku(): RokuState {
+        val box = roku ?: return RokuState.Absent
+        return try {
+            val info = box.deviceInfo()
+            val active = box.activeApp()
+            val apps = box.apps()
+            RokuState.Ready(info.friendlyName, active.name.takeUnless { active.isHome }, active.isHome, apps)
+        } catch (_: RokuException.LimitedMode) {
+            if (_state.value.roku !is RokuState.Limited) errors.record("roku", "control refused: network access is Limited")
+            RokuState.Limited(RokuException.LIMITED_HINT)
+        } catch (e: RokuException) {
+            if (_state.value.roku !is RokuState.Unreachable) errors.record("roku", "unreachable: ${e.cause?.message ?: e.message}")
+            RokuState.Unreachable(ROKU_HINT)
         }
     }
 
@@ -214,6 +237,40 @@ class RemoteController(
         refresh()
     }
 
+    // ── Roku (Stage 2b) ─────────────────────────────────────────────────────────────────────────────
+
+    /** The TV input the Roku sits on, found by its CEC name rather than a port number that may be mislabelled. */
+    private fun rokuInput(on: TvState.On): TvInput? =
+        on.inputs.firstOrNull { it.kind == InputKind.CEC_DEVICE && it.title.contains("roku", ignoreCase = true) }
+
+    /** Put the Roku in front on the TV unless it already is (SCOPE.md §4.1: one tap also switches the TV). */
+    private suspend fun bringRokuForward() {
+        val on = _state.value.tv as? TvState.On ?: return
+        val input = rokuInput(on) ?: return
+        if (input.active || on.nowPlaying == input.displayName) return
+        tv.switchInput(input.uri)
+        lastLaunchedApp = null
+        updateTv { it.copy(nowPlaying = input.displayName) }
+    }
+
+    suspend fun rokuKey(key: String) = action {
+        val box = roku ?: return@action
+        if (key == "Home") bringRokuForward()
+        box.keypress(key)
+        if (key == "Home") updateRoku { it.copy(activeApp = null, onHome = true) }
+    }
+
+    suspend fun rokuLaunch(appId: String) = action {
+        val box = roku ?: return@action
+        bringRokuForward()
+        box.launch(appId)
+        val name = (_state.value.roku as? RokuState.Ready)?.apps?.firstOrNull { it.id == appId }?.name
+        updateRoku { it.copy(activeApp = name ?: it.activeApp, onHome = false) }
+    }
+
+    /** Switch the TV to the Roku and show its home screen. */
+    suspend fun rokuHome() = rokuKey("Home")
+
     // ── Sonos extras ────────────────────────────────────────────────────────────────────────────────
 
     suspend fun setNightMode(on: Boolean) = action {
@@ -308,11 +365,25 @@ class RemoteController(
         } catch (e: SonosException) {
             errors.record("sonos", e.message ?: "Sonos error")
             _state.update { it.copy(busy = false, lastError = e.message) }
+        } catch (e: RokuException.LimitedMode) {
+            // The refresh already logged it if the box was locked before this press; keep one entry per cause.
+            if (_state.value.roku !is RokuState.Limited) errors.record("roku", "control refused: network access is Limited")
+            _state.update { it.copy(busy = false, roku = RokuState.Limited(RokuException.LIMITED_HINT), lastError = RokuException.LIMITED_HINT) }
+        } catch (e: RokuException.Unreachable) {
+            if (_state.value.roku !is RokuState.Unreachable) errors.record("roku", "unreachable: ${e.cause?.message ?: e.message}")
+            _state.update { it.copy(busy = false, roku = RokuState.Unreachable(ROKU_HINT), lastError = ROKU_HINT) }
+        } catch (e: RokuException) {
+            errors.record("roku", e.message ?: "Roku error")
+            _state.update { it.copy(busy = false, lastError = e.message) }
         }
     }
 
     private fun updateTv(f: (TvState.On) -> TvState.On) {
         _state.update { s -> (s.tv as? TvState.On)?.let { s.copy(tv = f(it)) } ?: s }
+    }
+
+    private fun updateRoku(f: (RokuState.Ready) -> RokuState.Ready) {
+        _state.update { s -> (s.roku as? RokuState.Ready)?.let { s.copy(roku = f(it)) } ?: s }
     }
 
     private fun updateSonos(f: (SonosState.Ready) -> SonosState.Ready) {

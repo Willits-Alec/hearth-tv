@@ -74,7 +74,7 @@ fun DiagnosticsScreen(vm: DiagnosticsViewModel, onBack: () -> Unit, onRepair: ()
                         Line("TV", "${st.tvModel ?: "?"} · ${st.tvHost ?: "not set"}")
                         Line("Paired", if (st.cookie != null || st.psk != null) "yes" else "no")
                         Line("Sonos", st.sonosName?.let { "$it · ${st.sonosHost}" } ?: "not set")
-                        Line("Roku", st.rokuHost ?: "not set")
+                        Line("Roku", st.rokuName?.let { "$it · ${st.rokuHost}" } ?: st.rokuHost ?: "not set")
                     }
                     Line(
                         "Update",

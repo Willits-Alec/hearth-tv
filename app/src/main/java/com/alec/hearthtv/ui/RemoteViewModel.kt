@@ -113,6 +113,9 @@ class RemoteViewModel : ViewModel() {
     fun setSpeechEnhancement(on: Boolean) = act { setSpeechEnhancement(on) }
     fun startPairing() = act { startPairing() }
     fun completePairing(pin: String) = act { completePairing(pin) }
+    fun rokuKey(key: String) = act { rokuKey(key) }
+    fun rokuLaunch(appId: String) = act { rokuLaunch(appId) }
+    fun rokuHome() = act { rokuHome() }
     fun recheckUpdate() = viewModelScope.launch { _update.value = HearthGraph.updateChecker().check() }
 
     // ── volume, debounced (SCOPE.md §4.2) ───────────────────────────────────────────────────────────

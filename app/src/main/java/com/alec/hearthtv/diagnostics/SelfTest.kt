@@ -2,6 +2,8 @@ package com.alec.hearthtv.diagnostics
 
 import com.alec.hearthtv.protocol.bravia.BraviaClient
 import com.alec.hearthtv.protocol.bravia.BraviaException
+import com.alec.hearthtv.protocol.roku.RokuClient
+import com.alec.hearthtv.protocol.roku.RokuException
 import com.alec.hearthtv.protocol.sonos.SonosClient
 import com.alec.hearthtv.update.UpdateStatus
 import java.time.Instant
@@ -34,6 +36,7 @@ class SelfTest(
     private val tvHost: String? = null,
     /** The download-page version check. */
     private val update: (suspend () -> UpdateStatus)? = null,
+    private val roku: RokuClient? = null,
 ) {
     private val tvChecks = listOf("TV paired", "TV wake-on-LAN", "TV power", "TV inputs", "TV volume", "TV sound output", "TV remote codes")
 
@@ -98,6 +101,23 @@ class SelfTest(
                 checks += check("Sonos group") {
                     val g = player.homeTheatreGroup() ?: throw IllegalStateException("no home-theatre group found")
                     "${g.name} (${g.satelliteUuids.size} satellites)"
+                }
+            }
+        }
+
+        roku?.let { box ->
+            val info = runCatching { box.deviceInfo() }
+            if (info.isFailure) {
+                checks += Check("Roku reachable", false, info.exceptionOrNull()?.message ?: "no answer")
+                checks += Check("Roku control", false, "skipped")
+            } else {
+                checks += Check("Roku reachable", true, "${info.getOrThrow().modelName} · Roku OS ${info.getOrThrow().softwareVersion}")
+                checks += check("Roku control") {
+                    try {
+                        "${box.apps().size} channels"
+                    } catch (_: RokuException.LimitedMode) {
+                        throw IllegalStateException(RokuException.LIMITED_HINT)
+                    }
                 }
             }
         }

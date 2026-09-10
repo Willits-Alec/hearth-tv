@@ -7,6 +7,7 @@ import com.alec.hearthtv.data.AppSettings
 import com.alec.hearthtv.net.WifiLanTransport
 import com.alec.hearthtv.protocol.SsdpDiscovery
 import com.alec.hearthtv.protocol.bravia.BraviaException
+import com.alec.hearthtv.protocol.roku.RokuException
 import com.alec.hearthtv.remote.PairingState
 import com.alec.hearthtv.remote.RemoteController
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -17,10 +18,11 @@ import kotlinx.coroutines.launch
 
 data class FoundTv(val host: String, val model: String)
 data class FoundSonos(val host: String, val model: String, val room: String, val isHomeTheatre: Boolean)
+data class FoundRoku(val host: String, val name: String, val model: String, val limited: Boolean)
 
 /** The first-launch wizard: find the TV → pair → find the Sonos → done. Every step also takes a typed address. */
 class SetupViewModel : ViewModel() {
-    enum class Step { FIND_TV, PAIR, FIND_SONOS, DONE }
+    enum class Step { FIND_TV, PAIR, FIND_SONOS, FIND_ROKU, DONE }
 
     data class State(
         val step: Step = Step.FIND_TV,
@@ -31,6 +33,8 @@ class SetupViewModel : ViewModel() {
         val pairing: PairingState = PairingState.Unknown,
         val foundSonos: List<FoundSonos> = emptyList(),
         val sonos: FoundSonos? = null,
+        val foundRokus: List<FoundRoku> = emptyList(),
+        val roku: FoundRoku? = null,
     )
 
     private val _state = MutableStateFlow(State())
@@ -145,11 +149,47 @@ class SetupViewModel : ViewModel() {
 
     fun chooseSonos(p: FoundSonos) = viewModelScope.launch {
         HearthGraph.settings.update { it.copy(sonosHost = p.host, sonosName = "${p.room} · ${p.model}") }
-        _state.update { it.copy(sonos = p, step = Step.DONE, busy = false, message = null) }
+        _state.update { it.copy(sonos = p, step = Step.FIND_ROKU, busy = false, message = null) }
+        searchRoku()
     }
 
     fun skipSonos() = viewModelScope.launch {
         HearthGraph.settings.update { it.copy(sonosHost = null, sonosName = null) }
+        _state.update { it.copy(step = Step.FIND_ROKU, busy = false) }
+        searchRoku()
+    }
+
+    // ── step 4: the Roku ────────────────────────────────────────────────────────────────────────────
+
+    fun searchRoku() = viewModelScope.launch {
+        _state.update { it.copy(busy = true, message = "Looking for a Roku…") }
+        val hosts = runCatching { HearthGraph.findRokus() }.getOrDefault(emptyList())
+        val boxes = hosts.mapNotNull { probeRoku(it) }
+        _state.update {
+            it.copy(busy = false, foundRokus = boxes, message = if (boxes.isEmpty()) "No Roku answered. You can type its address, or skip this." else null)
+        }
+    }
+
+    fun useRokuAddress(host: String) = viewModelScope.launch {
+        _state.update { it.copy(busy = true, message = "Checking $host…") }
+        val p = probeRoku(host.trim())
+        if (p == null) _state.update { it.copy(busy = false, message = "No Roku answered at $host.") } else chooseRoku(p)
+    }
+
+    private suspend fun probeRoku(host: String): FoundRoku? = runCatching {
+        val box = HearthGraph.roku(host)
+        val info = box.deviceInfo()
+        val limited = runCatching { box.apps() }.exceptionOrNull() is RokuException.LimitedMode
+        FoundRoku(host, info.friendlyName, info.modelName, limited)
+    }.getOrNull()
+
+    fun chooseRoku(p: FoundRoku) = viewModelScope.launch {
+        HearthGraph.settings.update { it.copy(rokuHost = p.host, rokuName = p.name) }
+        _state.update { it.copy(roku = p, step = Step.DONE, busy = false, message = null) }
+    }
+
+    fun skipRoku() = viewModelScope.launch {
+        HearthGraph.settings.update { it.copy(rokuHost = null, rokuName = null) }
         _state.update { it.copy(step = Step.DONE, busy = false) }
     }
 

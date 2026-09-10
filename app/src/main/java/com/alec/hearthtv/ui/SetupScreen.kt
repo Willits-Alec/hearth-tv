@@ -61,6 +61,7 @@ fun SetupScreen(vm: SetupViewModel, onDone: () -> Unit) {
                 SetupViewModel.Step.FIND_TV -> FindTvStep(s, vm)
                 SetupViewModel.Step.PAIR -> PairStep(s, vm)
                 SetupViewModel.Step.FIND_SONOS -> FindSonosStep(s, vm)
+                SetupViewModel.Step.FIND_ROKU -> FindRokuStep(s, vm)
                 SetupViewModel.Step.DONE -> DoneStep(s, onDone)
             }
             Spacer(Modifier.height(24.dp))
@@ -74,9 +75,10 @@ private fun StepHeader(step: SetupViewModel.Step) {
         SetupViewModel.Step.FIND_TV -> 1 to "Find the TV"
         SetupViewModel.Step.PAIR -> 2 to "Pair with the TV"
         SetupViewModel.Step.FIND_SONOS -> 3 to "Find the Sonos"
-        SetupViewModel.Step.DONE -> 4 to "All set"
+        SetupViewModel.Step.FIND_ROKU -> 4 to "Find the Roku"
+        SetupViewModel.Step.DONE -> 5 to "All set"
     }
-    Text("Step $n of 4", color = Ember, style = MaterialTheme.typography.labelLarge, modifier = Modifier.padding(top = 8.dp))
+    Text("Step $n of 5", color = Ember, style = MaterialTheme.typography.labelLarge, modifier = Modifier.padding(top = 8.dp))
     Text(title, style = MaterialTheme.typography.headlineMedium, fontWeight = FontWeight.SemiBold)
 }
 
@@ -149,6 +151,30 @@ private fun FindSonosStep(s: SetupViewModel.State, vm: SetupViewModel) {
         TextButton(onClick = { vm.skipSonos() }, enabled = !s.busy) { Text("Skip — no Sonos") }
     }
     ManualAddress(label = "Or type the sound bar's address", hint = "e.g. 192.168.1.30", enabled = !s.busy) { vm.useSonosAddress(it) }
+}
+
+@Composable
+private fun FindRokuStep(s: SetupViewModel.State, vm: SetupViewModel) {
+    Text("If a Roku is plugged into the TV, pick it here and the remote gets a Roku section.", color = PaperDim)
+    s.foundRokus.forEach { r ->
+        Card(colors = CardDefaults.cardColors(containerColor = Slate)) {
+            Row(Modifier.padding(14.dp).fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.weight(1f)) {
+                    Text("${r.name} · ${r.model}", fontWeight = FontWeight.SemiBold)
+                    Text(
+                        if (r.limited) "Control is switched off on the box — the remote will show how to turn it on" else r.host,
+                        color = if (r.limited) Bad else PaperDim, style = MaterialTheme.typography.bodySmall,
+                    )
+                }
+                Button(onClick = { vm.chooseRoku(r) }, colors = ButtonDefaults.buttonColors(containerColor = Ember, contentColor = Ink)) { Text("Use") }
+            }
+        }
+    }
+    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+        OutlinedButton(onClick = { vm.searchRoku() }, enabled = !s.busy) { Text("Search again") }
+        TextButton(onClick = { vm.skipRoku() }, enabled = !s.busy) { Text("Skip — no Roku") }
+    }
+    ManualAddress(label = "Or type the Roku's address", hint = "e.g. 192.168.1.91", enabled = !s.busy) { vm.useRokuAddress(it) }
 }
 
 @Composable

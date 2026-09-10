@@ -4,7 +4,7 @@ Standalone Android app that runs the **Family Room TV** (Sony KD-85X80CK) and it
 group from the owner's phone, over his own Wi-Fi, with nothing else installed anywhere. A port of the TV tile in
 Alec's Hearth app, re-built for a house that has no Hearth gateway, no WireGuard and no Alec on hand to fix things.
 
-Status: **BUILT AND RECONCILED 2026-09-10 — Stages 0–3 done and verified on the S26; §8 checks every promise here against the code. v0.2.1 closes the last §4.2 items (error log, hold-to-repeat, re-find a moved TV, PSK fallback, full key set, wider Self-test). Remaining: Roku tile (2b), then Stage 4 (acceptance walk, OWNER-GUIDE, icon, v1.0).**
+Status: **SCOPE COMPLETE IN CODE 2026-09-10 — every v1 feature in §4 is built; §8 checks each promise against the code. Stages 0–3 verified on the S26; v0.2.1 closed the last §4.2 items; v0.3.0 adds the Roku tile (Stage 2b), the last v1 feature. Remaining: Stage 4 — acceptance walk on the S26, OWNER-GUIDE, a proper icon, v1.0 for the owner. §9 records Alec's next-round requests (touchpad, volume bar, volume feedback, Sonos voice), to start after Stage 4.**
 Revised 2026-09-10: Alec's S26 is the test device and the owner receives a finished product (D6); one public repo
 publishes a download page with an in-app update banner (D7); pairing is by PIN, no TV-menu visit needed (D2).
 
@@ -77,7 +77,7 @@ Addresses, MACs and device ids live in `local/SITE.md` (gitignored). This sectio
 | Type on the TV | — (new) | phone keyboard → the TV's active text field (search boxes, passwords) | `appControl.setTextForm` |
 | Sonos row | — (new) | group volume, mute, night sound, speech enhancement, source | Sonos UPnP |
 | **Voice** | local LLM on the gateway | mic button → the phone's speech recogniser → a fixed grammar (volume, mute, power, open <app>, switch to <input>, keys, fix the sound, night mode, speech enhancement, type <text>); the words understood are shown | `RecognizerIntent`, then the same actions as the buttons |
-| **Roku tile** | — (new) | the Roku Ultra (HDMI 2, CEC "Roku Ultra"): Home, Back, D-pad, OK, play/pause, replay, its own app list and launch; one tap also switches the TV to the Roku's CEC input first. **Pending — Stage 2b, last by Alec's order** | Roku ECP on `:8060`: `keypress/<Key>`, `query/apps`, `launch/<id>`, `query/device-info`, `query/active-app` |
+| **Roku tile** | — (new) | the Roku Ultra (HDMI 2, CEC "Roku Ultra"): Home, Back, D-pad, OK, play/pause, replay, its own channel list and launch; Home or a channel also switches the TV to the Roku's CEC input first. **Shipped 0.3.0** | Roku ECP on `:8060`: `keypress/<Key>`, `query/apps`, `launch/<id>`, `query/device-info`, `query/active-app` |
 
 ### 4.2 v1 — robustness, because nobody can fix it on site
 
@@ -135,8 +135,8 @@ remote/        RemoteController (state, D4 routing, power, actions, pairing), Tv
 voice/         VoiceCommandParser — the spoken-command grammar                          ← JVM tests
 diagnostics/   SelfTest (the contract suite inside the app), ErrorLog                   ← JVM tests
 update/        UpdateChecker — version.json                                             ← JVM tests with MockWebServer
-protocol/      BraviaClient (JSON-RPC, IRCC, PIN/PSK auth), SonosClient (UPnP SOAP subset), RokuClient (ECP, pending),
-               SsdpDiscovery, WakeOnLan  ← JVM tests against fakes built from captured fixtures; UDP on loopback sockets
+protocol/      BraviaClient (JSON-RPC, IRCC, PIN/PSK auth), SonosClient (UPnP SOAP subset),
+               RokuClient (ECP), SsdpDiscovery, WakeOnLan  ← JVM tests against fakes built from captured fixtures; UDP on loopback
 net/           WifiLanTransport: OkHttp + sockets bound to the Wi-Fi Network, resolved per connection
 data/          SettingsRepository (DataStore)
 ```
@@ -168,7 +168,7 @@ data/          SettingsRepository (DataStore)
 |---|---|---|
 | 0 | **DONE 2026-09-10.** Repo skeleton from the Reach template, new keystore (outside git), 30 scrubbed fixtures, FakeBraviaServer + FakeSonos + FakeRoku with 20 green JVM tests, `assembleRelease` gated on the suite, public repo `Willits-Alec/hearth-tv` + Pages page + `publish.ps1` + `install-s26.ps1`; v0.0.1 published and installed on the S26 | S |
 | 1 | **Code DONE 2026-09-10** (47 tests green, written red first): `BraviaClient` — PIN + PSK auth, power, state, volume/mute/step, sound output, inputs, apps, now-playing, IRCC with the TV's own code table, text entry; `WakeOnLan`; `SsdpDiscovery`; `LanTransport` (Wi-Fi-bound). Real-TV contract run through Alec's phone (2026-09-10): pairing, IRCC, all reads, volume nudge, sound output speaker↔audioSystem, power off→standby→on over the network (no WoL needed while WoL mode is on) — all as the fake predicts; the `-PtvIp` runner was dropped for the in-app Self-test (§5 rule 4) | M |
-| 2 | **2a Sonos DONE 2026-09-10** (9 tests red-first): `SonosClient` — description, volume/step/mute, night sound, speech enhancement, transport, source, switch-to-TV, whole-house topology + home-theatre group. **2b Roku deferred to last** at Alec's request: `RokuClient` — ECP keypress, launch, app list (real list captured), device info, active app, Limited-mode detection | S |
+| 2 | **2a Sonos DONE 2026-09-10** (9 tests red-first): `SonosClient` — description, volume/step/mute, night sound, speech enhancement, transport, source, switch-to-TV, whole-house topology + home-theatre group. **2b Roku DONE 2026-09-10** (v0.3.0, 18 tests red-first): `RokuClient` — device info, active app, the 61-channel list, keypress, launch, Limited-mode detection; `RokuState` in the controller; a Roku card on the remote (name and what it is showing, Switch-to-Roku / Home, its own pad with hold-to-repeat, transport keys, channel chips with favourites); step 4 of the wizard finds the box by SSDP or a typed address and reports a locked box; Self-test gains *Roku reachable* and *Roku control* | S |
 | 3 | **Built 2026-09-10 and VERIFIED on the S26 at the owner's house the same day**: wizard found + paired the TV and picked the Arc; remote shows On · KD-85X80CK, inputs by CEC name, 37 apps, live Sonos state; volume-up moved the Arc 25→26 over the network. Unconnected HDMI ports hidden when CEC devices are listed (0.2.0); discovery re-check pending. 3a `RemoteController` (14 tests red-first: state, D4 routing, power with WoL + polling, actions, fix-the-sound, pairing, error surfacing), `UpdateChecker` (3), `SelfTest` (3); 3b Compose UI: Remote screen, Setup wizard (SSDP or typed address → PIN → Sonos), Diagnostics with Self-test, Copy report, update banner; DataStore settings. v0.1.0 installed on the S26 and published. **v0.2.0 (4) built, installed on the S26 and published 2026-09-10** from Alec's first-use feedback: voice commands (`VoiceCommandParser` grammar + mic button via RecognizerIntent, CEC device names beat stale port labels), text entry pre-checks `textInputActive()` and explains when no TV text box has focus (Sony answers Illegal State otherwise), and the app no longer drops back to the connect screen after minimising (Wi-Fi Network resolved per connection, `lastKnown` + quiet refresh under a Reconnecting banner). 91 tests green. **v0.2.1 (5) 2026-09-10 — scope reconciliation (§8)**: error log (last 20, timestamps, Clear, in the Copy report), key repeat on hold + haptic tick + coalesced volume, TV re-found by MAC when DHCP moves it, pre-shared key fallback on the pairing step, the full key set under More keys, Self-test gains discoverable / wake-on-LAN / update checks. 98 tests green. On-device check of 0.2.0/0.2.1 with Alec pending | L |
 | 4 | Acceptance pass on the S26 at the owner's house (`ACCEPTANCE.md`, contract write-tests), then v1.0 published and installed on the owner's phone from the page. `OWNER-GUIDE.md` (one page with pictures), `DEPLOY.md`. Fixes ship as releases he pulls with the Update banner. | S |
 
@@ -248,7 +248,7 @@ reason is recorded here; nothing was dropped silently.
 | Sound output toggle, Fix the sound (4.1) | `SoundCard`, `fixSound` | shipped 0.1.0 |
 | Type on the TV (4.1) | `TypeCard`, `typeText` + `textInputActive` pre-check | shipped 0.1.0, pre-check 0.2.0 |
 | Sonos row: volume, mute, night, speech, source (4.1, D5) | `SoundCard`, `SonosClient` | shipped 0.1.0 |
-| Roku tile (4.1, D8) | `RokuClient` + tile | **pending — Stage 2b**, last by Alec's order; FakeRoku + fixtures ready |
+| Roku tile (4.1, D8) | `protocol/roku/RokuClient`, `RokuState`, `RokuCard`, wizard step 4 | shipped 0.3.0 (18 tests); a locked box explains the Network-access fix instead of failing |
 | Voice (4.3 → v1) | `VoiceCommandParser`, mic button | shipped 0.2.0 |
 | Setup wizard: SSDP + manual address → PIN → Sonos (4.2) | `SetupViewModel`, `SetupScreen` | shipped 0.1.0, verified at the owner's house |
 | PSK as the advanced fallback (D2) | pairing step → "Use a pre-shared key" | **0.2.1** (client support since 0.1.0) |
@@ -265,9 +265,72 @@ reason is recorded here; nothing was dropped silently.
 | Fixtures first, red → green (5) | `fixtures/`, `Fake*`, every test file | followed; `fixtures/README.md` records each capture |
 | Robolectric Compose UI tests (5) | — | **amended**: the Compose layer only renders state and forwards taps; it is checked on the S26 with `ACCEPTANCE.md`, and all behaviour sits in JVM-tested layers |
 | `-PtvIp` contract task (5 rule 4) | — | **amended**: no dev machine is ever on that LAN; the in-app Self-test is the contract suite and was run from the S26 |
-| `assembleRelease` gated on the suite (5 rule 6) | `app/build.gradle.kts` | in force (98 tests green at this writing) |
+| `assembleRelease` gated on the suite (5 rule 6) | `app/build.gradle.kts` | in force (109 tests green at this writing) |
 | Public repo, Pages, Releases, version.json, keystore out of git (D7) | `publish.ps1`, `docs/`, `.gitignore` | in force since v0.0.1 |
 | Acceptance walk, OWNER-GUIDE, icon, v1.0 (Stage 4, D9) | `ACCEPTANCE.md`, `OWNER-GUIDE.md` | **pending — Stage 4** |
+
+## 9. Next scope — Alec's requests, 2026-09-10 (v0.4, after Stage 4)
+
+Recorded the day he first used the remote, to be built **after** the current scope closes (Stage 4: acceptance
+walk, owner guide, icon, v1.0). Each item says what it is, how it would be built, and what still needs deciding.
+
+### 9.1 A swipe touchpad instead of the D-pad buttons
+
+A toggle in the **top-right of the Navigate card** flips that card between today's arrow buttons and a thumb-sized
+touchpad: flick right → Right, left → Left, up/down likewise, tap → OK, double tap → Back. One component, so the
+Roku card gets the same toggle and sends ECP keys instead of IRCC keys. The choice is remembered in settings.
+
+- A long drag emits repeated keys, one per threshold crossed (about 40 dp), so a slow drag scrolls a long list.
+- Every emitted key ticks, exactly like the buttons do now.
+- The translator (drag distance → list of keys, tap timing → OK / Back) is pure Kotlin, so it is TDD'd against
+  synthetic gesture streams; only the thin Compose `pointerInput` wrapper is untested code.
+- **D10 to decide:** a double tap for Back means OK cannot fire until the double-tap window (about 250 ms) has
+  passed. Either OK gets that delay, or OK stays instant and Back keeps a button on the card. Recommendation:
+  take the 250 ms delay — the network round trip is already about that, and the gesture Alec asked for is worth it.
+
+### 9.2 Volume as a bar you drag, not only a rocker
+
+Replace the ± rocker with a horizontal level bar (drag to set, absolute), keeping the ± buttons beside it for one
+step at a time and the mute button as it is.
+
+- Both clients already do absolute volume: Sonos `SetVolume`, and the TV's `audio.setAudioVolume` with a level.
+- A drag fires far too many values, so it needs latest-wins throttling (about 5 per second) plus a guaranteed
+  send on release; today's coalescing only handles relative steps, so that is new plumbing worth its own tests.
+- The bar reads its range from the device: Sonos is 0–100, the TV reports its own min and max.
+
+### 9.3 Why the TV shows no volume change (and what to do about it)
+
+**Not a bug, and the number is real.** With the TV's output set to *Audio system*, this app talks to the Arc
+directly over UPnP (D4), deliberately bypassing HDMI-CEC — so the TV never hears about the change and never draws
+its on-screen bar. The number the app shows is the Arc's own answer: `SetRelativeVolume` replies with `NewVolume`
+and the app displays that reply, so a moving number means the Arc confirmed the move. It was checked against the
+real system on 2026-09-10 (Arc 25 → 26) and against the Sonos app.
+
+What is genuinely missing is feedback **on the TV**, and there is a way to get it, from a real finding the same
+day: the TV's own volume control drives the Arc over CEC in 2-unit steps and does draw the on-screen bar.
+
+- **D11 to decide:** add a setting, *Show volume on the TV*, that routes volume through the TV instead of straight
+  to the Arc. Cost: 2-unit granularity and CEC's flakiness. Default off. Recommendation: add it as a setting, not
+  as the default, and put a "the Arc says 26" confirmation line under the volume bar for the direct path.
+- Also worth doing in the same pass: subscribe to the Sonos UPnP event stream (GENA) so the bar follows changes
+  made by the Sonos app or the Arc's own remote, instead of waiting for the 8-second refresh.
+
+### 9.4 Tying the Sonos's voice control into the app
+
+Asked: can the Arc's voice control drive this app, so everything is one system? Honest answer, in tiers.
+
+- **Cannot be done on the LAN.** Sonos Voice Control and Alexa run on the speaker itself and are closed. There is
+  no local API to hand them an utterance or to receive what they heard, so the Arc's microphone cannot become this
+  app's microphone.
+- **Already works, and can grow (free):** the app's own voice (0.2.0) drives the TV, the Roku and the Sonos from
+  one grammar — volume, mute, night sound, speech enhancement, apps, inputs, keys. Adding phrases costs a test.
+- **Voice search on the TV (small, recommended):** mic → text → open the TV's search box and type it, using the
+  text entry that already ships. This is the "say what you want to watch" feature people actually mean.
+- **D12 to decide — hands-free.** A wake word on the phone needs `RECORD_AUDIO` and a foreground service, which
+  contradicts D1's "no background service". Only worth it if Alec wants the phone listening while it sits on the
+  arm of the couch.
+- **D13 to decide — the Alexa route.** "Alexa, turn on the TV" through the Arc would need a cloud endpoint and an
+  account link: against D1 (LAN-only, no cloud, no account) and its own project if it ever happens.
 
 ---
 
