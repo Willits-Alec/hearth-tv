@@ -61,7 +61,10 @@ class FakeBraviaServer : AutoCloseable {
         server.start()
     }
 
-    override fun close() = server.shutdown()
+    private var closed = false
+    override fun close() {
+        if (!closed) { closed = true; server.shutdown() }
+    }
 
     // ── dispatch ────────────────────────────────────────────────────────────────────────────────────
     private fun handle(req: RecordedRequest): MockResponse {

@@ -1,7 +1,14 @@
 {
-  "error": [
-    40005,
-    "Display Is Turned off"
+  "result": [
+    [
+      {
+        "target": "speaker",
+        "volume": 18,
+        "mute": false,
+        "maxVolume": 100,
+        "minVolume": 0
+      }
+    ]
   ],
   "id": 1
 }

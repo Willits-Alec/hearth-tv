@@ -13,6 +13,7 @@ values live in gitignored `local/SITE.md`. **Never hand-edit a fixture** — re-
 | error403 | reply to a gated method before pairing: `{"auth_url":..., "error":[403,"Forbidden"]}` (HTTP 403) |
 | accessControl_getMethodTypes | the `actRegister` signature — field is `nickname`, not `nick` |
 | getSystemInformation, getWolMode, getApplicationList (37 apps with launch URIs), getNetworkSettings | answer WITH the pairing cookie |
+| getVolumeInformation_standby | `[40005, "Display Is Turned off"]` — the volume query while the TV is in standby (the on-state `getVolumeInformation` is reconstructed from the probe log: speaker 18, unmuted, 0..100) |
 | getPlayingContentInfo | `[7, "Illegal State"]` — what the TV says on the home screen / inside an app; "no content", not an error |
 | ircc_Display.xml | HTTP 200 SOAP reply to `X_SendIRCC` (Display key) with the cookie |
 | eureka_info | Cast endpoint `http://<tv>:8008/setup/eureka_info`, unauthenticated |
