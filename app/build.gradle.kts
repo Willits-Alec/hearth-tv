@@ -23,8 +23,8 @@ android {
         applicationId = "com.alec.hearthtv"
         minSdk = 26
         targetSdk = 34
-        versionCode = 2
-        versionName = "0.1.0"
+        versionCode = 3
+        versionName = "0.1.1"
         // Where the app looks for a newer build (GitHub Pages) and where it sends the browser to get it.
         buildConfigField("String", "UPDATE_URL", "\"https://willits-alec.github.io/hearth-tv/version.json\"")
         buildConfigField("String", "APK_URL", "\"https://github.com/Willits-Alec/hearth-tv/releases/latest/download/hearth-tv.apk\"")

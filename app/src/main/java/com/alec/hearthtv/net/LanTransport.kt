@@ -53,8 +53,23 @@ class WifiLanTransport(context: Context) : LanTransport {
 
     override fun udpSocket(): DatagramSocket = DatagramSocket().also { s -> wifiNetwork()?.bindSocket(s) }
 
+    /**
+     * True when this app's default network is a VPN. A VPN that is not bypassable forces every socket of this app
+     * into the tunnel, Wi-Fi binding included — the only way out is to exclude the app inside the VPN's own settings.
+     */
+    fun vpnActive(): Boolean =
+        cm.activeNetwork?.let { cm.getNetworkCapabilities(it)?.hasTransport(NetworkCapabilities.TRANSPORT_VPN) } == true
+
     override val description: String
-        get() = if (wifiNetwork() != null) "Wi-Fi (bound)" else "no Wi-Fi network — using default route"
+        get() {
+            val wifi = if (wifiNetwork() != null) "Wi-Fi (bound)" else "no Wi-Fi network — using default route"
+            return if (vpnActive()) "$wifi · VPN active on this phone" else wifi
+        }
+
+    companion object {
+        const val VPN_HINT = "A VPN is running on this phone and it may be swallowing home-network traffic. " +
+            "Exclude Hearth TV in the VPN app (WireGuard: tunnel → Excluded applications), or switch the VPN off while using the remote."
+    }
 }
 
 internal fun baseClient(): OkHttpClient.Builder = OkHttpClient.Builder()

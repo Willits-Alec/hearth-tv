@@ -3,6 +3,7 @@ package com.alec.hearthtv.ui
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.alec.hearthtv.HearthGraph
+import com.alec.hearthtv.net.WifiLanTransport
 import com.alec.hearthtv.protocol.SsdpDiscovery
 import com.alec.hearthtv.protocol.bravia.BraviaException
 import com.alec.hearthtv.remote.PairingState
@@ -44,23 +45,29 @@ class SetupViewModel : ViewModel() {
         }.getOrDefault(emptyList())
         val tvs = found.map { it.host }.distinct().mapNotNull { host -> probeTv(host) }
         _state.update {
-            it.copy(busy = false, foundTvs = tvs, message = if (tvs.isEmpty()) "No Sony TV answered. Is the TV on and this phone on the home Wi-Fi? You can type its address below." else null)
+            it.copy(busy = false, foundTvs = tvs, message = if (tvs.isEmpty()) "No Sony TV answered. Is the TV on and this phone on the home Wi-Fi? You can type its address below.${vpnNote()}" else null)
         }
     }
 
     fun useTvAddress(host: String) = viewModelScope.launch {
         _state.update { it.copy(busy = true, message = "Checking $host…") }
-        val tv = probeTv(host.trim())
-        if (tv == null) {
-            _state.update { it.copy(busy = false, message = "Nothing that speaks Sony's API answered at $host.") }
-        } else {
-            chooseTv(tv)
+        val result = probeTvResult(host.trim())
+        result.onSuccess { chooseTv(it) }.onFailure { e ->
+            _state.update { it.copy(busy = false, message = "Couldn't reach a Sony TV at $host: ${describe(e)}${vpnNote()}") }
         }
     }
 
-    private suspend fun probeTv(host: String): FoundTv? = runCatching {
+    private suspend fun probeTv(host: String): FoundTv? = probeTvResult(host).getOrNull()
+
+    private suspend fun probeTvResult(host: String): Result<FoundTv> = runCatching {
         FoundTv(host, HearthGraph.bravia(host).interfaceInfo().modelName)
-    }.getOrNull()
+    }
+
+    /** The one thing that silently breaks LAN access on a phone: a VPN that is not bypassable. */
+    private fun vpnNote(): String {
+        val t = HearthGraph.transport as? WifiLanTransport ?: return ""
+        return if (t.vpnActive()) "\n\n${WifiLanTransport.VPN_HINT}" else ""
+    }
 
     fun chooseTv(tv: FoundTv) = viewModelScope.launch {
         _state.update { it.copy(busy = true, tv = tv) }
@@ -128,7 +135,7 @@ class SetupViewModel : ViewModel() {
     }
 
     fun describe(e: Throwable): String = when (e) {
-        is BraviaException.Unreachable -> RemoteController.WIFI_HINT
+        is BraviaException.Unreachable -> "${RemoteController.WIFI_HINT} (${e.cause?.message ?: e.message})"
         else -> e.message ?: "something went wrong"
     }
 }
