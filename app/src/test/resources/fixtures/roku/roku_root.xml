@@ -1,0 +1,20 @@
+HTTP/1.1 200 OK
+Server: Roku/15.3.4 UPnP/1.0 Roku/15.3.4
+Content-Length: 1299
+Cache-Control: no-cache
+Content-Type: text/xml; charset="utf-8"
+
+<?xml version="1.0"?>
+<root xmlns="urn:schemas-upnp-org:device-1-0">
+<specVersion>
+<major>1</major>
+<minor>0</minor>
+</specVersion>
+<device>
+<deviceType>urn:roku-com:device:player:1-0</deviceType>
+<friendlyName>Roku Ultra</friendlyName>
+<manufacturer>Roku</manufacturer>
+<manufacturerURL>http://www.roku.com/</manufacturerURL>
+<modelDescription>Roku Streaming Player Network Media</modelDescription>
+<modelName>4660X</modelName>
+<modelNumber>4660X</modelNumber>

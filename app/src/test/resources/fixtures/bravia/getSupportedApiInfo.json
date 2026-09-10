@@ -1,0 +1,830 @@
+{
+  "result": [
+    [
+      {
+        "service": "accessControl",
+        "protocols": [
+          "xhrpost:jsonizer"
+        ],
+        "apis": [
+          {
+            "name": "getMethodTypes",
+            "versions": [
+              {
+                "version": "1.0"
+              }
+            ]
+          },
+          {
+            "name": "getVersions",
+            "versions": [
+              {
+                "version": "1.0"
+              }
+            ]
+          },
+          {
+            "name": "actRegister",
+            "versions": [
+              {
+                "version": "1.0"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "service": "system",
+        "protocols": [
+          "xhrpost:jsonizer"
+        ],
+        "apis": [
+          {
+            "name": "getMethodTypes",
+            "versions": [
+              {
+                "version": "1.0"
+              }
+            ]
+          },
+          {
+            "name": "getVersions",
+            "versions": [
+              {
+                "version": "1.0"
+              }
+            ]
+          },
+          {
+            "name": "getDeviceMode",
+            "versions": [
+              {
+                "version": "1.0",
+                "authLevel": "generic"
+              }
+            ]
+          },
+          {
+            "name": "requestReboot",
+            "versions": [
+              {
+                "version": "1.0",
+                "authLevel": "generic"
+              }
+            ]
+          },
+          {
+            "name": "getInterfaceInformation",
+            "versions": [
+              {
+                "version": "1.0"
+              }
+            ]
+          },
+          {
+            "name": "getRemoteDeviceSettings",
+            "versions": [
+              {
+                "version": "1.0"
+              }
+            ]
+          },
+          {
+            "name": "getNetworkSettings",
+            "versions": [
+              {
+                "version": "1.0",
+                "authLevel": "generic"
+              }
+            ]
+          },
+          {
+            "name": "setDeviceMode",
+            "versions": [
+              {
+                "version": "1.0",
+                "authLevel": "generic"
+              }
+            ]
+          },
+          {
+            "name": "getSystemSupportedFunction",
+            "versions": [
+              {
+                "version": "1.0"
+              }
+            ]
+          },
+          {
+            "name": "getPowerSavingMode",
+            "versions": [
+              {
+                "version": "1.0"
+              }
+            ]
+          },
+          {
+            "name": "setWolMode",
+            "versions": [
+              {
+                "version": "1.0",
+                "authLevel": "generic"
+              }
+            ]
+          },
+          {
+            "name": "getScreenshot",
+            "versions": [
+              {
+                "version": "1.0",
+                "authLevel": "private"
+              }
+            ]
+          },
+          {
+            "name": "getWolMode",
+            "versions": [
+              {
+                "version": "1.0",
+                "authLevel": "generic"
+              }
+            ]
+          },
+          {
+            "name": "setPowerSavingMode",
+            "versions": [
+              {
+                "version": "1.0",
+                "authLevel": "generic"
+              }
+            ]
+          },
+          {
+            "name": "mountStorage",
+            "versions": [
+              {
+                "version": "1.0",
+                "authLevel": "generic"
+              }
+            ]
+          },
+          {
+            "name": "setPowerStatus",
+            "versions": [
+              {
+                "version": "1.0",
+                "authLevel": "generic"
+              }
+            ]
+          },
+          {
+            "name": "getLEDIndicatorStatus",
+            "versions": [
+              {
+                "version": "1.0",
+                "authLevel": "generic"
+              }
+            ]
+          },
+          {
+            "name": "getPowerStatus",
+            "versions": [
+              {
+                "version": "1.0"
+              }
+            ]
+          },
+          {
+            "name": "getCurrentTime",
+            "versions": [
+              {
+                "version": "1.0"
+              },
+              {
+                "version": "1.1"
+              }
+            ]
+          },
+          {
+            "name": "getSystemInformation",
+            "versions": [
+              {
+                "version": "1.0",
+                "authLevel": "private"
+              },
+              {
+                "version": "1.7",
+                "authLevel": "private"
+              }
+            ]
+          },
+          {
+            "name": "getStorageList",
+            "versions": [
+              {
+                "version": "1.1",
+                "authLevel": "generic"
+              }
+            ]
+          },
+          {
+            "name": "getRemoteControllerInfo",
+            "versions": [
+              {
+                "version": "1.0"
+              }
+            ]
+          },
+          {
+            "name": "setLEDIndicatorStatus",
+            "versions": [
+              {
+                "version": "1.1",
+                "authLevel": "generic"
+              }
+            ]
+          },
+          {
+            "name": "setLanguage",
+            "versions": [
+              {
+                "version": "1.0",
+                "authLevel": "generic"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "service": "appControl",
+        "protocols": [
+          "xhrpost:jsonizer"
+        ],
+        "apis": [
+          {
+            "name": "getMethodTypes",
+            "versions": [
+              {
+                "version": "1.0"
+              }
+            ]
+          },
+          {
+            "name": "getVersions",
+            "versions": [
+              {
+                "version": "1.0"
+              }
+            ]
+          },
+          {
+            "name": "getApplicationStatusList",
+            "versions": [
+              {
+                "version": "1.0"
+              }
+            ]
+          },
+          {
+            "name": "terminateApps",
+            "versions": [
+              {
+                "version": "1.0",
+                "authLevel": "generic"
+              }
+            ]
+          },
+          {
+            "name": "getTextForm",
+            "versions": [
+              {
+                "version": "1.1",
+                "authLevel": "private"
+              }
+            ]
+          },
+          {
+            "name": "setActiveApp",
+            "versions": [
+              {
+                "version": "1.0",
+                "authLevel": "generic"
+              }
+            ]
+          },
+          {
+            "name": "setTextForm",
+            "versions": [
+              {
+                "version": "1.0",
+                "authLevel": "generic"
+              },
+              {
+                "version": "1.1",
+                "authLevel": "generic"
+              }
+            ]
+          },
+          {
+            "name": "prepareAppUpload",
+            "versions": [
+              {
+                "version": "1.0",
+                "authLevel": "generic"
+              }
+            ]
+          },
+          {
+            "name": "getWebAppStatus",
+            "versions": [
+              {
+                "version": "1.0",
+                "authLevel": "private"
+              }
+            ]
+          },
+          {
+            "name": "installApp",
+            "versions": [
+              {
+                "version": "1.0",
+                "authLevel": "generic"
+              }
+            ]
+          },
+          {
+            "name": "getApplicationList",
+            "versions": [
+              {
+                "version": "1.0",
+                "authLevel": "private"
+              }
+            ]
+          },
+          {
+            "name": "uninstallApp",
+            "versions": [
+              {
+                "version": "1.0",
+                "authLevel": "generic"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "service": "encryption",
+        "protocols": [
+          "xhrpost:jsonizer"
+        ],
+        "apis": [
+          {
+            "name": "getMethodTypes",
+            "versions": [
+              {
+                "version": "1.0"
+              }
+            ]
+          },
+          {
+            "name": "getVersions",
+            "versions": [
+              {
+                "version": "1.0"
+              }
+            ]
+          },
+          {
+            "name": "getPublicKey",
+            "versions": [
+              {
+                "version": "1.0"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "service": "audio",
+        "protocols": [
+          "xhrpost:jsonizer"
+        ],
+        "apis": [
+          {
+            "name": "getMethodTypes",
+            "versions": [
+              {
+                "version": "1.0"
+              }
+            ]
+          },
+          {
+            "name": "getVersions",
+            "versions": [
+              {
+                "version": "1.0"
+              }
+            ]
+          },
+          {
+            "name": "setAudioVolume",
+            "versions": [
+              {
+                "version": "1.0",
+                "authLevel": "generic"
+              },
+              {
+                "version": "1.2",
+                "authLevel": "generic"
+              }
+            ]
+          },
+          {
+            "name": "getVolumeInformation",
+            "versions": [
+              {
+                "version": "1.0"
+              }
+            ]
+          },
+          {
+            "name": "getSoundSettings",
+            "versions": [
+              {
+                "version": "1.1"
+              }
+            ]
+          },
+          {
+            "name": "setSoundSettings",
+            "versions": [
+              {
+                "version": "1.1",
+                "authLevel": "generic"
+              }
+            ]
+          },
+          {
+            "name": "setAudioMute",
+            "versions": [
+              {
+                "version": "1.0",
+                "authLevel": "generic"
+              }
+            ]
+          },
+          {
+            "name": "setSpeakerSettings",
+            "versions": [
+              {
+                "version": "1.0",
+                "authLevel": "generic"
+              }
+            ]
+          },
+          {
+            "name": "getSpeakerSettings",
+            "versions": [
+              {
+                "version": "1.0"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "service": "avContent",
+        "protocols": [
+          "xhrpost:jsonizer"
+        ],
+        "apis": [
+          {
+            "name": "getMethodTypes",
+            "versions": [
+              {
+                "version": "1.0"
+              }
+            ]
+          },
+          {
+            "name": "getVersions",
+            "versions": [
+              {
+                "version": "1.0"
+              }
+            ]
+          },
+          {
+            "name": "getContentList",
+            "versions": [
+              {
+                "version": "1.0",
+                "authLevel": "private"
+              },
+              {
+                "version": "1.2",
+                "authLevel": "private"
+              },
+              {
+                "version": "1.5",
+                "authLevel": "private"
+              }
+            ]
+          },
+          {
+            "name": "getSchemeList",
+            "versions": [
+              {
+                "version": "1.0"
+              }
+            ]
+          },
+          {
+            "name": "getCurrentExternalInputsStatus",
+            "versions": [
+              {
+                "version": "1.0"
+              },
+              {
+                "version": "1.1"
+              }
+            ]
+          },
+          {
+            "name": "setPlayTvContent",
+            "versions": [
+              {
+                "version": "1.0",
+                "authLevel": "generic"
+              },
+              {
+                "version": "1.1",
+                "authLevel": "generic"
+              }
+            ]
+          },
+          {
+            "name": "setDeleteProtection",
+            "versions": [
+              {
+                "version": "1.0",
+                "authLevel": "generic"
+              }
+            ]
+          },
+          {
+            "name": "getPlayingContentInfo",
+            "versions": [
+              {
+                "version": "1.0",
+                "authLevel": "private"
+              }
+            ]
+          },
+          {
+            "name": "deleteContent",
+            "versions": [
+              {
+                "version": "1.0",
+                "authLevel": "generic"
+              }
+            ]
+          },
+          {
+            "name": "getFavoriteList",
+            "versions": [
+              {
+                "version": "1.0",
+                "authLevel": "private"
+              }
+            ]
+          },
+          {
+            "name": "getSourceList",
+            "versions": [
+              {
+                "version": "1.0"
+              }
+            ]
+          },
+          {
+            "name": "setPlayContent",
+            "versions": [
+              {
+                "version": "1.0",
+                "authLevel": "generic"
+              }
+            ]
+          },
+          {
+            "name": "setTvContentVisibility",
+            "versions": [
+              {
+                "version": "1.0",
+                "authLevel": "generic"
+              }
+            ]
+          },
+          {
+            "name": "getContentCount",
+            "versions": [
+              {
+                "version": "1.0",
+                "authLevel": "private"
+              },
+              {
+                "version": "1.1",
+                "authLevel": "private"
+              }
+            ]
+          },
+          {
+            "name": "getParentalRatingSettings",
+            "versions": [
+              {
+                "version": "1.0",
+                "authLevel": "generic"
+              }
+            ]
+          },
+          {
+            "name": "setFavoriteContentList",
+            "versions": [
+              {
+                "version": "1.0",
+                "authLevel": "generic"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "service": "videoScreen",
+        "protocols": [
+          "xhrpost:jsonizer"
+        ],
+        "apis": [
+          {
+            "name": "getMethodTypes",
+            "versions": [
+              {
+                "version": "1.0"
+              }
+            ]
+          },
+          {
+            "name": "getVersions",
+            "versions": [
+              {
+                "version": "1.0"
+              }
+            ]
+          },
+          {
+            "name": "setBannerMode",
+            "versions": [
+              {
+                "version": "1.0",
+                "authLevel": "generic"
+              }
+            ]
+          },
+          {
+            "name": "setAudioSourceScreen",
+            "versions": [
+              {
+                "version": "1.0",
+                "authLevel": "generic"
+              }
+            ]
+          },
+          {
+            "name": "requestToNotifyScreenState",
+            "versions": [
+              {
+                "version": "1.1"
+              }
+            ]
+          },
+          {
+            "name": "setMultiScreenMode",
+            "versions": [
+              {
+                "version": "1.0",
+                "authLevel": "generic"
+              }
+            ]
+          },
+          {
+            "name": "getPipSubScreenPosition",
+            "versions": [
+              {
+                "version": "1.0"
+              }
+            ]
+          },
+          {
+            "name": "setPipSubScreenPosition",
+            "versions": [
+              {
+                "version": "1.0",
+                "authLevel": "generic"
+              }
+            ]
+          },
+          {
+            "name": "getBannerMode",
+            "versions": [
+              {
+                "version": "1.0"
+              }
+            ]
+          },
+          {
+            "name": "getSceneSetting",
+            "versions": [
+              {
+                "version": "1.0"
+              }
+            ]
+          },
+          {
+            "name": "setPapScreenSize",
+            "versions": [
+              {
+                "version": "1.0",
+                "authLevel": "generic"
+              }
+            ]
+          },
+          {
+            "name": "getMultiScreenMode",
+            "versions": [
+              {
+                "version": "1.1"
+              }
+            ]
+          },
+          {
+            "name": "getAudioSourceScreen",
+            "versions": [
+              {
+                "version": "1.0"
+              }
+            ]
+          },
+          {
+            "name": "setSceneSetting",
+            "versions": [
+              {
+                "version": "1.0",
+                "authLevel": "generic"
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "service": "guide",
+        "protocols": [
+          "xhrpost:jsonizer"
+        ],
+        "apis": [
+          {
+            "name": "getMethodTypes",
+            "versions": [
+              {
+                "version": "1.0"
+              }
+            ]
+          },
+          {
+            "name": "getVersions",
+            "versions": [
+              {
+                "version": "1.0"
+              }
+            ]
+          },
+          {
+            "name": "getServiceProtocols",
+            "versions": [
+              {
+                "version": "1.0"
+              }
+            ]
+          },
+          {
+            "name": "getSupportedApiInfo",
+            "versions": [
+              {
+                "version": "1.0"
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  ],
+  "id": 1
+}

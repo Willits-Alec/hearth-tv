@@ -1,0 +1,42 @@
+{
+  "bssid": "",
+  "build_version": "446070",
+  "cast_build_revision": "3.72.446070",
+  "connected": true,
+  "ethernet_connected": true,
+  "has_update": false,
+  "hotspot_bssid": "02:00:00:00:00:01",
+  "ip_address": "192.0.2.85",
+  "locale": "en-US",
+  "location": {
+    "country_code": "US",
+    "latitude": 255.0,
+    "longitude": 255.0
+  },
+  "mac_address": "02:00:00:00:00:85",
+  "name": "Test Room TV",
+  "opt_in": {
+    "crash": false,
+    "opencast": false,
+    "stats": false
+  },
+  "public_key": "REDACTED",
+  "release_track": "",
+  "setup_state": 60,
+  "setup_stats": {
+    "historically_succeeded": true,
+    "num_check_connectivity": 0,
+    "num_connect_wifi": 0,
+    "num_connected_wifi_not_saved": 0,
+    "num_initial_eureka_info": 0,
+    "num_obtain_ip": 0
+  },
+  "ssdp_udn": "4cf49696-5024-e921-9d71-d8a0c1fefe3e",
+  "ssid": "TestNet",
+  "time_format": 1,
+  "tos_accepted": true,
+  "uptime": 2948.812623,
+  "version": 12,
+  "wpa_configured": false,
+  "wpa_state": 0
+}

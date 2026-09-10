@@ -1,0 +1,47 @@
+{
+  "result": [
+    [
+      {
+        "uri": "extInput:hdmi?port=1",
+        "title": "HDMI 1",
+        "connection": false,
+        "label": "",
+        "icon": "meta:hdmi",
+        "status": "false"
+      },
+      {
+        "uri": "extInput:hdmi?port=2",
+        "title": "HDMI 2",
+        "connection": false,
+        "label": "Game",
+        "icon": "meta:hdmi",
+        "status": "false"
+      },
+      {
+        "uri": "extInput:hdmi?port=3",
+        "title": "HDMI 3 (eARC/ARC)",
+        "connection": true,
+        "label": "",
+        "icon": "meta:hdmi",
+        "status": "false"
+      },
+      {
+        "uri": "extInput:hdmi?port=4",
+        "title": "HDMI 4",
+        "connection": false,
+        "label": "Roku",
+        "icon": "meta:hdmi",
+        "status": "false"
+      },
+      {
+        "uri": "extInput:composite?port=1",
+        "title": "Video",
+        "connection": false,
+        "label": "",
+        "icon": "meta:composite",
+        "status": ""
+      }
+    ]
+  ],
+  "id": 1
+}

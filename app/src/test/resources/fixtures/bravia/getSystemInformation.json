@@ -1,0 +1,17 @@
+{
+  "result": [
+    {
+      "product": "TV",
+      "region": "XUC",
+      "language": "eng",
+      "model": "KD-85X80CK",
+      "serial": "0000000",
+      "macAddr": "02:00:00:00:00:85",
+      "name": "BRAVIA",
+      "generation": "5.7.0",
+      "area": "USA",
+      "cid": "00000000000000000000000000000000"
+    }
+  ],
+  "id": 1
+}

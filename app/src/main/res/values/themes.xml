@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Framework theme only (no AppCompat): Compose draws everything. -->
+    <style name="Theme.HearthTV" parent="android:Theme.Material.NoActionBar">
+        <item name="android:windowBackground">#0E0E11</item>
+        <item name="android:statusBarColor">#0E0E11</item>
+        <item name="android:navigationBarColor">#0E0E11</item>
+        <item name="android:windowLightStatusBar">false</item>
+    </style>
+</resources>

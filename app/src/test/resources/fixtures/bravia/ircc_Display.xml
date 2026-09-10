@@ -1,0 +1,13 @@
+HTTP/1.1 200 OK
+Content-Type: text/xml; charset="utf-8"
+Ext: 
+
+<?xml version="1.0"?>
+<s:Envelope
+    xmlns:s="http://schemas.xmlsoap.org/soap/envelope/"
+    s:encodingStyle="http://schemas.xmlsoap.org/soap/encoding/">
+  <s:Body>
+    <u:X_SendIRCCResponse xmlns:u="urn:schemas-sony-com:service:IRCC:1">
+    </u:X_SendIRCCResponse>
+  </s:Body>
+</s:Envelope>

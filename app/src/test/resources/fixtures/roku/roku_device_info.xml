@@ -1,0 +1,78 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<device-info>
+	<udn>00000000-0000-0000-0000-000000000000</udn>
+	<serial-number>X000000000000</serial-number>
+	<device-id>000000000000</device-id>
+	<advertising-id>00000000-0000-0000-0000-000000000000</advertising-id>
+	<user-profile-type>none</user-profile-type>
+	<vendor-name>Roku</vendor-name>
+	<model-name>Roku Ultra</model-name>
+	<model-number>4660X</model-number>
+	<model-region>US</model-region>
+	<is-tv>false</is-tv>
+	<is-stick>false</is-stick>
+	<mobile-has-live-tv>true</mobile-has-live-tv>
+	<ui-resolution>1080p</ui-resolution>
+	<supports-ethernet>true</supports-ethernet>
+	<wifi-mac>02:00:00:00:00:91</wifi-mac>
+	<wifi-driver>realtek</wifi-driver>
+	<has-wifi-5G-support>true</has-wifi-5G-support>
+	<ethernet-mac>02:00:00:00:00:91</ethernet-mac>
+	<network-type>wifi</network-type>
+	<network-name>TestNet</network-name>
+	<friendly-device-name>Roku Ultra</friendly-device-name>
+	<friendly-model-name>Roku Ultra</friendly-model-name>
+	<default-device-name>Roku Ultra - X000000000000</default-device-name>
+	<user-device-name>Test Room Roku</user-device-name>
+	<user-device-location>Test Room</user-device-location>
+	<build-number>46G.34E00841A</build-number>
+	<software-version>15.3.4</software-version>
+	<software-build>841</software-build>
+	<lightning-base-build-number />
+	<ui-build-number>46G.34E00841A</ui-build-number>
+	<ui-software-version>15.3.4</ui-software-version>
+	<ui-software-build>841</ui-software-build>
+	<secure-device>true</secure-device>
+	<ecp-setting-mode>limited</ecp-setting-mode>
+	<language>en</language>
+	<country>US</country>
+	<locale>en_US</locale>
+	<closed-caption-mode>Off</closed-caption-mode>
+	<time-zone-auto>true</time-zone-auto>
+	<time-zone>US/Pacific</time-zone>
+	<time-zone-name>United States/Pacific</time-zone-name>
+	<time-zone-tz>America/Los_Angeles</time-zone-tz>
+	<time-zone-offset>-420</time-zone-offset>
+	<clock-format>12-hour</clock-format>
+	<uptime>416602</uptime>
+	<power-mode>PowerOn</power-mode>
+	<supports-suspend>false</supports-suspend>
+	<supports-find-remote>true</supports-find-remote>
+	<find-remote-is-possible>true</find-remote-is-possible>
+	<supports-audio-guide>true</supports-audio-guide>
+	<supports-rva>true</supports-rva>
+	<has-hands-free-voice-remote>false</has-hands-free-voice-remote>
+	<developer-enabled>false</developer-enabled>
+	<keyed-developer-id />
+	<device-automation-bridge-enabled>false</device-automation-bridge-enabled>
+	<search-enabled>true</search-enabled>
+	<search-channels-enabled>true</search-channels-enabled>
+	<voice-search-enabled>true</voice-search-enabled>
+	<supports-private-listening>true</supports-private-listening>
+	<private-listening-blocked>false</private-listening-blocked>
+	<headphones-connected>false</headphones-connected>
+	<supports-audio-settings>false</supports-audio-settings>
+	<supports-ecs-textedit>true</supports-ecs-textedit>
+	<supports-ecs-microphone>true</supports-ecs-microphone>
+	<supports-wake-on-wlan>false</supports-wake-on-wlan>
+	<supports-airplay>true</supports-airplay>
+	<has-play-on-roku>false</has-play-on-roku>
+	<has-mobile-screensaver>false</has-mobile-screensaver>
+	<support-url>roku.com/support</support-url>
+	<grandcentral-version>26.35.14</grandcentral-version>
+	<supports-trc>true</supports-trc>
+	<trc-version>3.0</trc-version>
+	<trc-channel-version>26.24.5</trc-channel-version>
+	<av-sync-calibration-enabled>3.0</av-sync-calibration-enabled>
+	<is-powered-by-tv>false</is-powered-by-tv>
+</device-info>
