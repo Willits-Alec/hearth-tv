@@ -3,6 +3,7 @@ package com.alec.hearthtv.ui
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.alec.hearthtv.HearthGraph
+import com.alec.hearthtv.data.AppSettings
 import com.alec.hearthtv.net.WifiLanTransport
 import com.alec.hearthtv.protocol.SsdpDiscovery
 import com.alec.hearthtv.protocol.bravia.BraviaException
@@ -96,6 +97,24 @@ class SetupViewModel : ViewModel() {
         if (result == PairingState.Paired) {
             _state.update { it.copy(step = Step.FIND_SONOS) }
             searchSonos()
+        }
+    }
+
+    /** D2's advanced fallback: a Pre-Shared Key from the TV's IP-control settings, verified before it is kept. */
+    fun usePsk(key: String) = viewModelScope.launch {
+        val host = _state.value.tv?.host ?: return@launch
+        val psk = key.trim()
+        if (psk.isEmpty()) return@launch
+        _state.update { it.copy(busy = true, message = null) }
+        val probe = runCatching { HearthGraph.bravia(host, AppSettings(clientId = "", psk = psk)).systemInfo() }
+        if (probe.isSuccess) {
+            HearthGraph.settings.update { it.copy(psk = psk, cookie = null, cookieExpiresAt = null) }
+            _state.update { it.copy(busy = false, pairing = PairingState.Paired, step = Step.FIND_SONOS) }
+            searchSonos()
+        } else {
+            _state.update {
+                it.copy(busy = false, pairing = PairingState.Failed("The TV rejected that key. On the TV: Settings → Network & Internet → Home network setup → IP control → Authentication must be “Normal and Pre-Shared Key”, and the key must match."))
+            }
         }
     }
 

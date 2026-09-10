@@ -1,5 +1,6 @@
 package com.alec.hearthtv.remote
 
+import com.alec.hearthtv.diagnostics.ErrorLog
 import com.alec.hearthtv.protocol.bravia.BraviaClient
 import com.alec.hearthtv.protocol.bravia.BraviaCredentials
 import com.alec.hearthtv.protocol.bravia.BraviaException
@@ -33,6 +34,8 @@ class RemoteController(
     private val nickname: String = "Hearth TV",
     private val pollDelayMs: Long = 1000,
     private val powerOnTimeoutMs: Long = 15_000,
+    /** Every failure lands here with a timestamp for the Diagnostics screen (SCOPE.md §4.2). */
+    private val errors: ErrorLog = ErrorLog(),
 ) {
     companion object {
         const val WIFI_HINT = "Can't reach the TV. Is this phone on the home Wi-Fi, and is the TV plugged in?"
@@ -69,8 +72,10 @@ class RemoteController(
         val power = try {
             tv.powerStatus()
         } catch (e: BraviaException.Unreachable) {
+            noteTvGone("unreachable: ${e.cause?.message ?: e.message}")
             return TvState.Unreachable(WIFI_HINT) to _state.value.pairing
         } catch (e: BraviaException) {
+            noteTvGone(e.message ?: "TV error")
             return TvState.Unreachable(e.message ?: "TV error") to _state.value.pairing
         }
         val assumedPairing = if (tv.credentials == BraviaCredentials.None) PairingState.NeedsPairing(false) else PairingState.Paired
@@ -89,6 +94,7 @@ class RemoteController(
         } catch (_: BraviaException.AuthRequired) {
             pairing = PairingState.NeedsPairing(pinShown = false)
         } catch (e: BraviaException) {
+            errors.record("tv", e.message ?: "TV error")
             _state.update { it.copy(lastError = e.message) }
         }
         return TvState.On(nowPlaying, volume?.level, volume?.muted ?: false, output, inputs, apps) to pairing
@@ -104,9 +110,15 @@ class RemoteController(
                 speechEnhancement = s.speechEnhancement(),
                 source = s.source().kind,
             )
-        } catch (_: SonosException) {
+        } catch (e: SonosException) {
+            if (_state.value.sonos !is SonosState.Unreachable) errors.record("sonos", "unreachable: ${e.message}")
             SonosState.Unreachable(SONOS_HINT)
         }
+    }
+
+    /** Log the moment the TV drops out, not every quiet refresh while it stays out. */
+    private fun noteTvGone(detail: String) {
+        if (_state.value.tv !is TvState.Unreachable) errors.record("tv", detail)
     }
 
     // ── power ───────────────────────────────────────────────────────────────────────────────────────
@@ -132,7 +144,7 @@ class RemoteController(
     suspend fun volumeUp() = volumeStep(+1)
     suspend fun volumeDown() = volumeStep(-1)
 
-    private suspend fun volumeStep(delta: Int) = action {
+    suspend fun volumeStep(delta: Int) = action {
         when (_state.value.volumeTarget) {
             VolumeTarget.SONOS -> {
                 val level = sonos!!.volumeStep(delta)
@@ -272,6 +284,7 @@ class RemoteController(
         } catch (e: BraviaException) {
             PairingState.Failed(e.message ?: "pairing failed")
         }
+        if (result is PairingState.Failed) errors.record("pairing", result.reason)
         _state.update { it.copy(pairing = result) }
         return result
     }
@@ -284,12 +297,16 @@ class RemoteController(
             block()
             _state.update { it.copy(busy = false) }
         } catch (e: BraviaException.AuthRequired) {
+            errors.record("tv", "needs pairing")
             _state.update { it.copy(busy = false, pairing = PairingState.NeedsPairing(false), lastError = "The TV needs pairing before it accepts that.") }
         } catch (e: BraviaException.Unreachable) {
+            noteTvGone("unreachable: ${e.cause?.message ?: e.message}")
             _state.update { it.copy(busy = false, tv = TvState.Unreachable(WIFI_HINT), lastError = WIFI_HINT) }
         } catch (e: BraviaException) {
+            errors.record("tv", e.message ?: "TV error")
             _state.update { it.copy(busy = false, lastError = e.message) }
         } catch (e: SonosException) {
+            errors.record("sonos", e.message ?: "Sonos error")
             _state.update { it.copy(busy = false, lastError = e.message) }
         }
     }

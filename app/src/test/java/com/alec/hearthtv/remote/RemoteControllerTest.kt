@@ -1,5 +1,6 @@
 package com.alec.hearthtv.remote
 
+import com.alec.hearthtv.diagnostics.ErrorLog
 import com.alec.hearthtv.fakes.FakeBraviaServer
 import com.alec.hearthtv.fakes.FakeSonos
 import com.alec.hearthtv.protocol.bravia.BraviaClient
@@ -32,6 +33,7 @@ class RemoteControllerTest {
     private lateinit var creds: InMemoryCredentialStore
     private val http = OkHttpClient.Builder().callTimeout(5, TimeUnit.SECONDS).build()
     private val wolSent = mutableListOf<String>()
+    private val errors = ErrorLog(clock = { "T" })
 
     @Before fun start() {
         tv = FakeBraviaServer()
@@ -52,6 +54,7 @@ class RemoteControllerTest {
             wakeOnLan = { mac -> wolSent += mac },
             pollDelayMs = 5,
             powerOnTimeoutMs = 2000,
+            errors = errors,
         )
     }
 
@@ -262,6 +265,33 @@ class RemoteControllerTest {
         val unknown = c.voice("make me a sandwich")
         assertTrue(unknown.contains("Didn't catch"))
         assertTrue(unknown.contains("make me a sandwich"))
+    }
+
+    // ── error log (Diagnostics) ────────────────────────────────────────────────────────────────────
+
+    @Test fun `a failing action lands in the error log with a timestamp and its device`() = runTest {
+        val c = controller()
+        c.refresh()
+        assertTrue(errors.entries.value.isEmpty())
+        c.key("NoSuchKey")
+        val e = errors.entries.value.single()
+        assertEquals("T", e.at)
+        assertEquals("tv", e.source)
+        assertTrue(e.message.isNotBlank())
+    }
+
+    @Test fun `a TV that drops off the network is logged once, not on every quiet refresh`() = runTest {
+        val gone = FakeBraviaServer()
+        val url = gone.baseUrl
+        gone.close()
+        val c = RemoteController(
+            tv = BraviaClient(url, http, BraviaCredentials.Cookie(gone.cookieValue, null)), sonos = null,
+            credentials = creds, tvMac = null, wakeOnLan = {}, errors = errors,
+        )
+        repeat(3) { c.refresh(quiet = true) }
+        assertTrue(c.state.value.tv is TvState.Unreachable)
+        assertEquals(1, errors.entries.value.size)
+        assertTrue(errors.entries.value.single().message.startsWith("unreachable"))
     }
 
     @Test fun `a failing action surfaces once in lastError and does not poison the state`() = runTest {

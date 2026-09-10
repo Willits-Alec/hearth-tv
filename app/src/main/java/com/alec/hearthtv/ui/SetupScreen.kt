@@ -119,6 +119,15 @@ private fun PairStep(s: SetupViewModel.State, vm: SetupViewModel) {
         colors = ButtonDefaults.buttonColors(containerColor = Ember, contentColor = Ink),
     ) { Text("Pair") }
     TextButton(onClick = { vm.startPairing() }, enabled = !s.busy) { Text("Show the code again") }
+    var advanced by rememberSaveable { mutableStateOf(false) }
+    TextButton(onClick = { advanced = !advanced }, enabled = !s.busy) { Text(if (advanced) "Hide the key option" else "No code on the TV? Use a pre-shared key") }
+    if (advanced) {
+        Text(
+            "On the TV: Settings → Network & Internet → Home network setup → IP control → set Authentication to “Normal and Pre-Shared Key”, then type that key here.",
+            color = PaperDim, style = MaterialTheme.typography.bodySmall,
+        )
+        ManualAddress(label = "Pre-shared key", hint = "the key shown on the TV", enabled = !s.busy, onSubmit = { vm.usePsk(it) })
+    }
 }
 
 @Composable

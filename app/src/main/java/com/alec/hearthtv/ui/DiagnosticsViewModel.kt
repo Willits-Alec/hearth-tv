@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.alec.hearthtv.BuildConfig
 import com.alec.hearthtv.HearthGraph
 import com.alec.hearthtv.data.AppSettings
+import com.alec.hearthtv.diagnostics.ErrorEntry
 import com.alec.hearthtv.diagnostics.SelfTestReport
 import com.alec.hearthtv.update.UpdateStatus
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -20,6 +21,7 @@ class DiagnosticsViewModel : ViewModel() {
         val running: Boolean = false,
         val report: SelfTestReport? = null,
         val update: UpdateStatus? = null,
+        val errors: List<ErrorEntry> = emptyList(),
         val appVersion: String = "${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})",
     )
 
@@ -31,6 +33,9 @@ class DiagnosticsViewModel : ViewModel() {
             HearthGraph.settings.settings.collect { s ->
                 _state.update { it.copy(settings = s, transport = HearthGraph.transport.description) }
             }
+        }
+        viewModelScope.launch {
+            HearthGraph.errorLog.entries.collect { e -> _state.update { it.copy(errors = e) } }
         }
     }
 
@@ -50,9 +55,11 @@ class DiagnosticsViewModel : ViewModel() {
         _state.update { it.copy(update = HearthGraph.updateChecker().check()) }
     }
 
+    fun clearErrors() = HearthGraph.errorLog.clear()
+
     fun forgetEverything() = viewModelScope.launch { HearthGraph.settings.forgetAll() }
 
-    /** Diagnostics text with the self-test report appended, for the Copy button. */
+    /** Diagnostics text with the recent errors and the self-test report appended, for the Copy button. */
     fun copyText(): String {
         val s = _state.value
         return buildString {
@@ -64,6 +71,9 @@ class DiagnosticsViewModel : ViewModel() {
                 appendLine("roku: ${st.rokuHost ?: "not set"}")
             }
             appendLine("update: ${s.update ?: "not checked"}")
+            appendLine()
+            appendLine("recent errors:")
+            appendLine(HearthGraph.errorLog.text())
             s.report?.let { appendLine(); append(it.text()) }
         }
     }

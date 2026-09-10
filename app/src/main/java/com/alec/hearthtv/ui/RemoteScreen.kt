@@ -86,6 +86,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -117,6 +118,9 @@ fun RemoteScreen(vm: RemoteViewModel, onOpenSetup: () -> Unit, onOpenDiagnostics
     val snackbar = remember { SnackbarHostState() }
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
+    val haptic = LocalHapticFeedback.current
+    /** One tap = one key with a tick. Held keys (arrows, volume) tick on their own. */
+    val press: (String) -> Unit = { haptic.tick(); vm.key(it) }
 
     // Quiet background refresh: no progress bar, no flicker. Immediately on resume, then every 8 s.
     LifecycleResumeEffect(Unit) {
@@ -168,7 +172,7 @@ fun RemoteScreen(vm: RemoteViewModel, onOpenSetup: () -> Unit, onOpenDiagnostics
 
             (update as? UpdateStatus.Available)?.let { UpdateBanner(it) { url -> context.startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url))) } }
 
-            StatusCard(ui, settings?.tvModel, onPower = { vm.powerToggle() })
+            StatusCard(ui, settings?.tvModel, onPower = { haptic.tick(); vm.powerToggle() })
 
             // Keep the remote usable from the last good read while the TV is briefly out of reach.
             val live = ui.tv as? TvState.On
@@ -178,11 +182,12 @@ fun RemoteScreen(vm: RemoteViewModel, onOpenSetup: () -> Unit, onOpenDiagnostics
                 shown != null -> {
                     if (live == null) ReconnectingBanner(ui.tv)
                     if (ui.pairing is PairingState.NeedsPairing) PairingCard(onOpenSetup)
-                    VolumeCluster(ui, shown, onDown = { vm.volumeDown() }, onMute = { vm.toggleMute() }, onUp = { vm.volumeUp() })
+                    VolumeCluster(ui, shown, onDown = { vm.volumeDown() }, onMute = { haptic.tick(); vm.toggleMute() }, onUp = { vm.volumeUp() })
                     InputsRow(shown.inputs, shown.nowPlaying) { vm.selectInput(it) }
                     AppsRow(shown.apps, shown.nowPlaying) { vm.launchApp(it) }
-                    DPad(onKey = { vm.key(it) })
-                    MediaRow(onKey = { vm.key(it) })
+                    DPad(onKey = press, onArrow = { vm.key(it) })
+                    MediaRow(onKey = press)
+                    MoreKeys(onKey = press)
                     SoundCard(ui, shown, onFix = { vm.fixSound() }, onOutput = { vm.setOutput(it) }, onNight = { vm.setNightMode(it) }, onSpeech = { vm.setSpeechEnhancement(it) })
                     TypeCard(onSend = { vm.typeText(it) })
                 }
@@ -268,9 +273,9 @@ private fun VolumeCluster(ui: RemoteUiState, tv: TvState.On, onDown: () -> Unit,
             }
             Spacer(Modifier.height(10.dp))
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                BigButton(Icons.Rounded.VolumeDown, "Volume down", Modifier.weight(1f), onDown)
+                HoldButton(Icons.Rounded.VolumeDown, "Volume down", onDown, Modifier.weight(1f).height(64.dp), shape = RoundedCornerShape(16.dp))
                 BigButton(Icons.Rounded.VolumeOff, if (muted) "Unmute" else "Mute", Modifier.weight(0.7f), onMute, tonal = true)
-                BigButton(Icons.Rounded.VolumeUp, "Volume up", Modifier.weight(1f), onUp)
+                HoldButton(Icons.Rounded.VolumeUp, "Volume up", onUp, Modifier.weight(1f).height(64.dp), shape = RoundedCornerShape(16.dp))
             }
         }
     }
@@ -324,20 +329,20 @@ private fun AppsRow(apps: List<TvApp>, nowPlaying: String?, onLaunch: (String) -
 }
 
 @Composable
-private fun DPad(onKey: (String) -> Unit) {
+private fun DPad(onKey: (String) -> Unit, onArrow: (String) -> Unit) {
     Section("Navigate")
     Card(colors = CardDefaults.cardColors(containerColor = Slate), shape = RoundedCornerShape(20.dp)) {
         Column(Modifier.padding(12.dp).fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            PadButton(Icons.Rounded.KeyboardArrowUp, "Up") { onKey("Up") }
+            ArrowKey(Icons.Rounded.KeyboardArrowUp, "Up", onArrow)
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                PadButton(Icons.Rounded.KeyboardArrowLeft, "Left") { onKey("Left") }
+                ArrowKey(Icons.Rounded.KeyboardArrowLeft, "Left", onArrow)
                 Button(
                     onClick = { onKey("Confirm") }, modifier = Modifier.size(84.dp), shape = CircleShape,
                     colors = ButtonDefaults.buttonColors(containerColor = Ember, contentColor = Ink),
                 ) { Text("OK", fontWeight = FontWeight.Bold) }
-                PadButton(Icons.Rounded.KeyboardArrowRight, "Right") { onKey("Right") }
+                ArrowKey(Icons.Rounded.KeyboardArrowRight, "Right", onArrow)
             }
-            PadButton(Icons.Rounded.KeyboardArrowDown, "Down") { onKey("Down") }
+            ArrowKey(Icons.Rounded.KeyboardArrowDown, "Down", onArrow)
             Spacer(Modifier.height(4.dp))
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 SmallKey(Icons.Rounded.ArrowBack, "Back", Modifier.weight(1f)) { onKey("Return") }
@@ -349,12 +354,41 @@ private fun DPad(onKey: (String) -> Unit) {
     }
 }
 
+/** A D-pad arrow: sends its IRCC key on press and repeats while held (SCOPE.md §4.2). */
 @Composable
-private fun PadButton(icon: ImageVector, description: String, onClick: () -> Unit) {
-    FilledIconButton(
-        onClick = onClick, modifier = Modifier.size(width = 84.dp, height = 56.dp), shape = RoundedCornerShape(14.dp),
-        colors = IconButtonDefaults.filledIconButtonColors(containerColor = SlateLight, contentColor = Paper),
-    ) { Icon(icon, description, Modifier.size(30.dp)) }
+private fun ArrowKey(icon: ImageVector, key: String, onArrow: (String) -> Unit) {
+    HoldButton(icon, key, { onArrow(key) }, Modifier.size(width = 84.dp, height = 56.dp))
+}
+
+/** The rest of the Sony remote, folded away: guide, input, exit, channels, numbers, app keys, colours. */
+@Composable
+private fun MoreKeys(onKey: (String) -> Unit) {
+    var open by rememberSaveable { mutableStateOf(false) }
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Section("More keys", Modifier.weight(1f))
+        OutlinedButton(onClick = { open = !open }) { Text(if (open) "Hide" else "Show") }
+    }
+    if (!open) return
+    Card(colors = CardDefaults.cardColors(containerColor = Slate), shape = RoundedCornerShape(20.dp)) {
+        Column(Modifier.padding(12.dp).fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            KeyRow(listOf("Guide" to "GGuide", "Input" to "Input", "Exit" to "Exit", "Options" to "Options"), onKey)
+            KeyRow(listOf("Ch +" to "ChannelUp", "Ch -" to "ChannelDown", "Subtitles" to "SubTitle", "Audio" to "Audio"), onKey)
+            KeyRow(listOf("1" to "Num1", "2" to "Num2", "3" to "Num3"), onKey)
+            KeyRow(listOf("4" to "Num4", "5" to "Num5", "6" to "Num6"), onKey)
+            KeyRow(listOf("7" to "Num7", "8" to "Num8", "9" to "Num9"), onKey)
+            KeyRow(listOf("Netflix" to "Netflix", "0" to "Num0", "YouTube" to "YouTube"), onKey)
+            KeyRow(listOf("Red" to "Red", "Green" to "Green", "Yellow" to "Yellow", "Blue" to "Blue"), onKey)
+        }
+    }
+}
+
+@Composable
+private fun KeyRow(keys: List<Pair<String, String>>, onKey: (String) -> Unit) {
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        keys.forEach { (label, code) ->
+            FilledTonalButton(onClick = { onKey(code) }, modifier = Modifier.weight(1f).height(48.dp), shape = RoundedCornerShape(12.dp)) { Text(label) }
+        }
+    }
 }
 
 @Composable

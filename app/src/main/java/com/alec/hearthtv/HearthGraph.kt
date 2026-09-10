@@ -4,14 +4,17 @@ import android.content.Context
 import android.net.wifi.WifiManager
 import com.alec.hearthtv.data.AppSettings
 import com.alec.hearthtv.data.SettingsRepository
+import com.alec.hearthtv.diagnostics.ErrorLog
 import com.alec.hearthtv.diagnostics.SelfTest
 import com.alec.hearthtv.net.LanTransport
 import com.alec.hearthtv.net.WifiLanTransport
 import com.alec.hearthtv.protocol.SsdpDiscovery
 import com.alec.hearthtv.protocol.WakeOnLan
 import com.alec.hearthtv.protocol.bravia.BraviaClient
+import com.alec.hearthtv.protocol.bravia.BraviaCredentials
 import com.alec.hearthtv.protocol.sonos.SonosClient
 import com.alec.hearthtv.remote.RemoteController
+import com.alec.hearthtv.remote.TvRelocator
 import com.alec.hearthtv.update.UpdateChecker
 import okhttp3.OkHttpClient
 import java.util.concurrent.TimeUnit
@@ -25,6 +28,9 @@ object HearthGraph {
     lateinit var transport: LanTransport
         private set
 
+    /** The last 20 failures with timestamps, shared by the remote and the Diagnostics screen (SCOPE.md §4.2). */
+    val errorLog = ErrorLog()
+
     fun init(context: Context) {
         if (::appContext.isInitialized) return
         appContext = context.applicationContext
@@ -33,7 +39,7 @@ object HearthGraph {
     }
 
     fun bravia(host: String, s: AppSettings? = null): BraviaClient =
-        BraviaClient("http://$host", transport.http(), s?.credentials ?: com.alec.hearthtv.protocol.bravia.BraviaCredentials.None)
+        BraviaClient("http://$host", transport.http(), s?.credentials ?: BraviaCredentials.None)
 
     fun sonos(host: String): SonosClient = SonosClient("http://$host:1400", transport.http())
 
@@ -46,15 +52,30 @@ object HearthGraph {
             tvMac = s.tvMac,
             wakeOnLan = { mac -> WakeOnLan.send(mac, socketProvider = { transport.udpSocket() }) },
             clientId = s.clientId,
+            errors = errorLog,
         )
     }
 
     fun selfTest(s: AppSettings): SelfTest? {
         val host = s.tvHost ?: return null
-        return SelfTest(bravia(host, s), s.sonosHost?.let { sonos(it) }, appVersion = "${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})")
+        return SelfTest(
+            tv = bravia(host, s),
+            sonos = s.sonosHost?.let { sonos(it) },
+            appVersion = "${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})",
+            discover = { findSonyTvs() },
+            tvHost = host,
+            update = { updateChecker().check() },
+        )
     }
 
     fun discovery(): SsdpDiscovery = SsdpDiscovery(socketProvider = { transport.udpSocket() })
+
+    /** Hosts of every Sony TV that answers the SSDP search, in the order they answered. */
+    suspend fun findSonyTvs(): List<String> =
+        withMulticast { discovery().search(SsdpDiscovery.ST_SONY_SCALAR, timeoutMs = 3000) }.map { it.host }.distinct()
+
+    /** Finds the TV again by MAC when DHCP has moved it (SCOPE.md §4.2). */
+    fun relocator(): TvRelocator = TvRelocator(discover = { findSonyTvs() }, macOf = { host -> bravia(host).wolMac() })
 
     /** The update check goes to the internet, not the LAN: plain client, longer timeout. */
     fun updateChecker(): UpdateChecker = UpdateChecker(

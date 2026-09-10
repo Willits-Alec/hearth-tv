@@ -4,7 +4,7 @@ Standalone Android app that runs the **Family Room TV** (Sony KD-85X80CK) and it
 group from the owner's phone, over his own Wi-Fi, with nothing else installed anywhere. A port of the TV tile in
 Alec's Hearth app, re-built for a house that has no Hearth gateway, no WireGuard and no Alec on hand to fix things.
 
-Status: **BUILDING — Stages 0–3 done and verified on the S26; v0.2.0 (voice, text pre-check, resume) published 2026-09-10. Next: on-device check of the three 0.2.0 fixes with Alec, then Roku (2b), acceptance, OWNER-GUIDE, v1.0.**
+Status: **BUILT AND RECONCILED 2026-09-10 — Stages 0–3 done and verified on the S26; §8 checks every promise here against the code. v0.2.1 closes the last §4.2 items (error log, hold-to-repeat, re-find a moved TV, PSK fallback, full key set, wider Self-test). Remaining: Roku tile (2b), then Stage 4 (acceptance walk, OWNER-GUIDE, icon, v1.0).**
 Revised 2026-09-10: Alec's S26 is the test device and the owner receives a finished product (D6); one public repo
 publishes a download page with an in-app update banner (D7); pairing is by PIN, no TV-menu visit needed (D2).
 
@@ -21,7 +21,7 @@ publishes a download page with an in-app update banner (D7); pairing is by PIN, 
 | D5 | Sonos feature set | v1 = group volume, mute, night sound, speech enhancement, "switch to TV", current source. v2 = sub level, surround level, EQ. |
 | D6 | Testing | **TDD, JVM-first; Alec's S26 is the test device, the owner gets a finished product.** Protocol clients and the state machine are pure Kotlin tested against a fake TV built from real fixtures captured from this TV on 2026-09-09. Test builds install silently on the S26 through Hearth (`shell_exec` → `pm install`), and the contract suite runs against the real TV whenever the S26 is on the owner's Wi-Fi. The same checks ship inside the app as a one-tap **Self-test** with a copyable report, for the day the owner's phone misbehaves. No APK is cut unless `gradle test` is green. Details §5. |
 | D7 | Distribution | **One public GitHub repo, `hearth-tv`, no VPN.** Source, tests and releases together: GitHub Pages serves a one-page download site and GitHub Releases hosts the signed APK, so the owner has one bookmark and the APK link `…/releases/latest/download/hearth-tv.apk` never changes. The app checks the page's `version.json` on launch and shows an **Update available → Download** banner. Public means two rules: fixtures are scrubbed of the owner's MAC, IPs and names (real values live in gitignored `local/SITE.md`), and the **signing keystore and its passwords are never committed** (gitignored, backed up outside the repo, passwords read from `local.properties`). Alec's test builds also go to the Pi appshelf for silent installs on the S26. Fallback: Quick Share. |
-| D8 | Not in v1 | Voice control, casting media from the phone, out-of-home control. All listed in §6 with what they would take. **Roku moved into v1** (Alec, 2026-09-10). |
+| D8 | Not in v1 | Casting media from the phone, out-of-home control — listed in §6 with what they would take. **Roku moved into v1** (Alec, 2026-09-10). **Voice moved into v1** after Alec's first use (0.2.0, 2026-09-10): the phone's speech recogniser plus a fixed grammar, exactly the v2 sketch in §4.3. |
 | D9 | Name | **Hearth TV** (Alec, 2026-09-10). Package `com.alec.hearthtv`, repo `hearth-tv`, APK `hearth-tv.apk`. A placeholder icon ships in Stage 0; a proper one before v1.0. |
 
 ---
@@ -51,8 +51,8 @@ Addresses, MACs and device ids live in `local/SITE.md` (gitignored). This sectio
 | TV network | **Wired Ethernet** (good for Wake-on-LAN), DHCP address on the house LAN behind an Asus router; address and MAC in `local/SITE.md`. Needs a DHCP reservation (§7). |
 | Sony REST API | Live at `http://<tv>/sony/<service>`, interface version 5.7.0. Answers **without any key**: power status, interface info, volume, sound output, the input list, the full IRCC code table, the WoL MAC. Answers **403 + pairing URL** until paired: system info, app list, now-playing, WoL mode, network settings, and the IRCC send endpoint. |
 | Supported services | `system`, `audio`, `avContent`, `appControl`, `accessControl` (PIN pairing), `guide`. Includes `setTextForm` (type on the TV from the phone) and `getScreenshot`. |
-| Inputs | HDMI 1 (empty), HDMI 2 labelled **"Game"**, HDMI 3 eARC = **Sonos Arc**, HDMI 4 labelled **"Roku"**, Composite. |
-| Roku | **Roku Ultra** (4660X), Roku OS 15.3.4, on HDMI 4; ECP on :8060. Currently in **Limited** network-access mode: device info and active app answer, app list / keypress / launch are refused. One-time fix on the Roku: Settings → System → Advanced system settings → Control by mobile apps → Network access → **Default**. The app detects Limited mode and shows exactly that instruction. Fixtures captured 2026-09-10. |
+| Inputs | HDMI 1 (empty), HDMI 2 labelled **"Game"** and physically the **Roku Ultra** (CEC entry "Roku Ultra", port 2), HDMI 3 eARC = **Sonos Arc**, HDMI 4 labelled **"Roku"** but empty (a stale label), Composite. While the TV is on, CEC devices appear as their own entries; the app lists those and hides unconnected ports. |
+| Roku | **Roku Ultra** (4660X), Roku OS 15.3.4, on HDMI 2 (the HDMI 4 "Roku" label is stale); ECP on :8060. Was in **Limited** network-access mode (device info and active app answer; app list / keypress / launch refused); Alec set it to **Default** on 2026-09-10 and the full app list (61 apps) was captured. The app still detects Limited mode and shows the fix: Settings → System → Advanced system settings → Control by mobile apps → Network access → Default. Fixtures captured 2026-09-10. |
 | Other TV ports | Cast 8008/8009/8443 open; Android TV Remote protocol 6467 open; Simple IP 20060 answers; ADB 5555 closed. |
 | Sonos | Arc (model S19, sw 94.1) + Sub + Era 300 surrounds in room "TV Room". UPnP on :1400 answers. Addresses in `local/SITE.md`. |
 | Pairing | PIN pairing completed 2026-09-10 from Alec's phone; cookie lifetime 14 days, renewed silently while the TV remembers the client. With it: system info, WoL mode (**enabled**), app list (37 apps incl. Prime Video, Netflix, YouTube, Apple TV, Hulu, Plex, Paramount+, Spotify, Pandora) and the IRCC send endpoint all answer. Registration details in `local/SITE.md`. |
@@ -69,34 +69,39 @@ Addresses, MACs and device ids live in `local/SITE.md` (gitignored). This sectio
 | Power off | SSAP | `setPowerStatus false` | `system.setPowerStatus` |
 | State line | connected / app / volume | "On · Prime Video", "Standby", volume, which output | `getPowerStatus`, `getPlayingContentInfo`, `getVolumeInformation`, `getSoundSettings` |
 | Volume ± / mute | TV only (silently ignored on the soundbar) | **D4**: Sonos group when output = Audio system, TV otherwise | Sonos `RenderingControl`, `audio.setAudioVolume` / `setAudioMute` |
-| Inputs | list + switch | list with the TV's own labels ("Game", "Roku"), highlight current, switch | `avContent.getCurrentExternalInputsStatus`, `setPlayContent extInput:hdmi?port=N` |
+| Inputs | list + switch | CEC device names first ("Roku Ultra", "Sonos Arc"), then the owner's port labels ("Game"); unconnected ports and ports claimed by a CEC device are hidden; highlight current, switch | `avContent.getCurrentExternalInputsStatus`, `setPlayContent extInput:hdmi?port=N` |
 | Apps | favourites row + full list | same; favourites = Prime Video, YouTube, Disney+, Netflix, Apple TV, Max, Spotify when installed | `appControl.getApplicationList`, `setActiveApp` |
-| Buttons | D-pad, Home, Back, Menu, media, numbers, colours | D-pad, Home, Back, Guide, media, numbers, plus Sony extras (Netflix, YouTube, Prime keys, Input, Display) | IRCC over `/sony/ircc`, codes read live from `getRemoteControllerInfo`, never hard-coded |
+| Buttons | D-pad, Home, Back, Menu, media, numbers, colours | D-pad (arrows repeat while held), OK, Back, Home, Menu, Info, media row; under **More keys**: Guide, Input, Exit, Options, Ch ±, Subtitles, Audio, 0–9, Netflix, YouTube, the colour keys. Every press ticks. This TV has no Prime key | IRCC over `/sony/ircc`, codes read live from `getRemoteControllerInfo`, never hard-coded |
 | Sound output | TV speaker / optical / HDMI | TV speakers ↔ Audio system | `audio.setSoundSettings outputTerminal` |
 | **Fix the sound** | — (new) | one tap: output → Audio system, Arc → TV input, then re-read state | `setSoundSettings`, Sonos `AVTransport` `x-sonos-htastream` |
 | Type on the TV | — (new) | phone keyboard → the TV's active text field (search boxes, passwords) | `appControl.setTextForm` |
 | Sonos row | — (new) | group volume, mute, night sound, speech enhancement, source | Sonos UPnP |
-| **Roku tile** | — (new) | the Roku Ultra on HDMI 4: Home, Back, D-pad, OK, play/pause, replay, its own app list and launch; one tap also switches the TV to HDMI 4 first | Roku ECP on `:8060`: `keypress/<Key>`, `query/apps`, `launch/<id>`, `query/device-info`, `query/active-app` |
+| **Voice** | local LLM on the gateway | mic button → the phone's speech recogniser → a fixed grammar (volume, mute, power, open <app>, switch to <input>, keys, fix the sound, night mode, speech enhancement, type <text>); the words understood are shown | `RecognizerIntent`, then the same actions as the buttons |
+| **Roku tile** | — (new) | the Roku Ultra (HDMI 2, CEC "Roku Ultra"): Home, Back, D-pad, OK, play/pause, replay, its own app list and launch; one tap also switches the TV to the Roku's CEC input first. **Pending — Stage 2b, last by Alec's order** | Roku ECP on `:8060`: `keypress/<Key>`, `query/apps`, `launch/<id>`, `query/device-info`, `query/active-app` |
 
 ### 4.2 v1 — robustness, because nobody can fix it on site
 
 - **Setup wizard** (first launch, ~1 minute): find the TV by SSDP (`ScalarWebAPI`) with manual IP fallback →
-  pair (PIN on the TV, or type the PSK) → find the Sonos home-theatre room by SSDP → done. Stores TV IP, MAC,
-  and the TV's UUID so it can **re-find the TV if DHCP moves it**.
+  pair (PIN on the TV; a pre-shared key under an advanced link, D2) → find the Sonos home-theatre room by SSDP → done.
+  Stores the TV's address, MAC and model. When the TV stops answering, the remote **re-finds it by MAC** (SSDP, then
+  the unauthenticated WOL-MAC read) and saves the new address, so DHCP moving the TV heals itself.
 - **Self-test** (one tap on the Diagnostics screen): runs the read-only contract checks on the phone it is installed on —
-  find TV, paired?, power state, inputs, volume, sound output, IRCC table, find Arc, group state, update check —
+  TV discoverable (SSDP), reachable, paired, wake-on-LAN mode, power state, inputs, volume, sound output, IRCC table,
+  Sonos reachable, home-theatre group, update check —
   and renders a pass/fail list with a **Copy report** button. This is the field version of the contract suite in §5.
 - **Update check**: on launch and on demand, fetch `version.json` from the public page; if newer, show a banner
   with a Download button that opens the browser at the fixed APK link. No auto-install, no background polling.
-- **Diagnostics screen**: TV reachable / paired / power state / WoL mode; Arc reachable / group state; last 20
-  errors with timestamps; a **Copy diagnostics** button producing a text block the owner can paste to Alec.
+- **Diagnostics screen**: app, network binding, TV / pairing / Sonos / Roku settings, update status; the Self-test
+  report (reachability, pairing, WoL mode, group state); the **last 20 errors with timestamps**, newest first, with
+  Clear; a **Copy report** button producing one text block the owner can paste to Alec.
 - **Plain-language errors** with the next step ("Can't see the TV. Is your phone on the home Wi-Fi?").
 - **Wi-Fi binding**: every socket (HTTP, UDP for WoL and SSDP) is bound to the Wi-Fi `Network` object, so a VPN
   on the phone cannot swallow LAN traffic. Alec's own phone runs WireGuard full-tunnel, and this is exactly what
   broke the first probes today — the fix is designed in, not discovered later.
 - **Standby handling**: when the TV reports standby, the screen collapses to a big power button; after power-on
   it polls state for ~15 s so the tile fills in without a manual refresh.
-- **Debounced volume**, IRCC key-repeat on hold, haptic tick per press, big touch targets, works one-handed.
+- **Coalesced volume** (held presses fold into as few device calls as the network keeps up with), **key repeat on
+  hold** for volume and the arrows, a **haptic tick** per press, big touch targets, works one-handed.
 - **No background work**: the app does nothing when closed. Nothing to drain a battery or leak.
 
 ### 4.3 Dropped from the LG tile, and why
@@ -107,8 +112,8 @@ Addresses, MACs and device ids live in `local/SITE.md` (gitignored). This sectio
 | Open URL / dashboard page on the TV | dropped | this Bravia has no browser |
 | Cast local media | v2 | needs the Google Cast SDK and a receiver; the owner can cast from any app already |
 | Screen share | dropped | Google Home / Smart View already do it; the app would only open a menu |
-| Voice → TV action | v2 | Hearth's version runs a local LLM on the gateway; here it would be on-device speech + a small grammar |
-| Raw request passthrough | dev-only | kept in the diagnostics screen behind a long-press, not a user feature |
+| Voice → TV action | **shipped in v1 (0.2.0)** | Hearth's version runs a local LLM on the gateway; here it is the phone's speech recogniser + a small grammar (`VoiceCommandParser`) |
+| Raw request passthrough | dropped | the Self-test, the error log and the Copy report answered every "what did the TV say" question that came up; a hidden raw console was never needed |
 
 ## 5. Platform, test strategy, delivery
 
@@ -119,16 +124,21 @@ Gradle 8.9 under `tools/`, JDK 21 at `C:\Program Files\Java\jdk-21`, Android SDK
 signing from a NEW keystore kept **outside git** (`keystore/` is gitignored, passwords read from `local.properties`,
 a backup copy lives with Alec's other keys). Dependencies added over Reach: OkHttp 4.12,
 kotlinx-serialization-json, DataStore Preferences. Test dependencies: JUnit 4, kotlinx-coroutines-test, Turbine,
-OkHttp MockWebServer, Robolectric for Compose UI tests.
+OkHttp MockWebServer. **No Robolectric**: the Compose layer is thin (it renders `RemoteUiState` and forwards taps)
+and is verified on the S26 with `ACCEPTANCE.md`; every behaviour lives in the pure-Kotlin layers under JVM tests.
 
 ### Layers (each testable on its own)
 
 ```
-ui/            Compose screens: Remote, Setup wizard, Diagnostics          ← Compose tests (Robolectric)
-viewmodel/     RemoteViewModel: state machine, volume routing (D4), polling ← JVM tests with FakeBravia + FakeSonos
-protocol/      BraviaClient (JSON-RPC, IRCC, PIN/PSK auth, WoL), SonosClient (UPnP SOAP subset), RokuClient (ECP), Discovery (SSDP)
-               ← JVM tests against MockWebServer + captured fixtures; UDP tested with loopback sockets
-net/           WifiBoundHttp: OkHttp + sockets bound to the Wi-Fi Network   ← unit tests with a fake ConnectivityManager
+ui/            Compose screens (Remote, Setup wizard, Diagnostics) + thin ViewModels   ← verified on the S26 (ACCEPTANCE.md)
+remote/        RemoteController (state, D4 routing, power, actions, pairing), TvRelocator ← JVM tests with FakeBravia + FakeSonos
+voice/         VoiceCommandParser — the spoken-command grammar                          ← JVM tests
+diagnostics/   SelfTest (the contract suite inside the app), ErrorLog                   ← JVM tests
+update/        UpdateChecker — version.json                                             ← JVM tests with MockWebServer
+protocol/      BraviaClient (JSON-RPC, IRCC, PIN/PSK auth), SonosClient (UPnP SOAP subset), RokuClient (ECP, pending),
+               SsdpDiscovery, WakeOnLan  ← JVM tests against fakes built from captured fixtures; UDP on loopback sockets
+net/           WifiLanTransport: OkHttp + sockets bound to the Wi-Fi Network, resolved per connection
+data/          SettingsRepository (DataStore)
 ```
 
 ### TDD rules for this project
@@ -137,18 +147,19 @@ net/           WifiBoundHttp: OkHttp + sockets bound to the Wi-Fi Network   ← 
    2026-09-09 (power, interface, inputs, volume, sound settings, IRCC table, supported API, the 403 pairing error,
    Cast `eureka_info`), plus `sonos/device_description.xml` from the Arc. Every parser test reads a fixture; no
    hand-typed JSON in tests.
-2. **Red → green per feature.** A feature starts as a failing client test, then a failing ViewModel test, then the
-   UI test. No production code without a failing test that needs it.
+2. **Red → green per feature.** A feature starts as a failing client test, then a failing controller test, then the
+   screen renders it and is checked on the S26. No production code without a failing test that needs it.
 3. **FakeBraviaServer** is a stateful MockWebServer dispatcher: it holds power / volume / mute / input / active app /
    paired-or-not and answers like the real TV (including 403 until paired, and "display is off" errors in standby).
    FakeSonos does the same for volume, mute, night mode, source. Behaviour tests run against these, in milliseconds.
-4. **Contract tests** (`src/contract/`) run the same client calls against the **real TV** when `-PtvIp=10.10.10.85`
-   is passed; skipped otherwise. Read-only by default; the write set (power, volume, input) runs only with
-   `-PtvWrite=true` and Alec on site. This is how we learn what the fake got wrong, once, before the owner does.
-   The same check list is compiled into the app as the **Self-test** (§4.2), so the contract suite also runs on the
-   only device that matters, by the owner, in one tap.
-5. **Definition of done per stage**: unit + ViewModel + UI tests green; contract tests green against the real TV
-   from the S26; the acceptance checklist in `ACCEPTANCE.md` walked on the S26 at the owner's house.
+4. **Contract checks run on the phone, not from Gradle.** No development machine is ever on the owner's LAN, so
+   the planned `-PtvIp` Gradle task was dropped. The read-only contract suite is compiled into the app as the
+   **Self-test** (§4.2) and was run from the S26 on 2026-09-10; the write set (power, volume, input, sound output,
+   pairing) was exercised by hand from the S26 the same day. Every difference found went back into the fakes as a
+   fixture (`fixtures/README.md` records how each was captured). This is how we learn what the fake got wrong,
+   once, before the owner does.
+5. **Definition of done per stage**: JVM suite green; Self-test green on the S26 at the owner's house; the
+   acceptance checklist in `ACCEPTANCE.md` walked there.
 6. **Gate**: `assembleRelease` depends on `test`. A red suite cannot produce an APK.
 
 ### Stages
@@ -156,9 +167,9 @@ net/           WifiBoundHttp: OkHttp + sockets bound to the Wi-Fi Network   ← 
 | Stage | Contents | Size |
 |---|---|---|
 | 0 | **DONE 2026-09-10.** Repo skeleton from the Reach template, new keystore (outside git), 30 scrubbed fixtures, FakeBraviaServer + FakeSonos + FakeRoku with 20 green JVM tests, `assembleRelease` gated on the suite, public repo `Willits-Alec/hearth-tv` + Pages page + `publish.ps1` + `install-s26.ps1`; v0.0.1 published and installed on the S26 | S |
-| 1 | **Code DONE 2026-09-10** (47 tests green, written red first): `BraviaClient` — PIN + PSK auth, power, state, volume/mute/step, sound output, inputs, apps, now-playing, IRCC with the TV's own code table, text entry; `WakeOnLan`; `SsdpDiscovery`; `LanTransport` (Wi-Fi-bound). Real-TV contract run through Alec's phone (2026-09-10): pairing, IRCC, all reads, volume nudge, sound output speaker↔audioSystem, power off→standby→on over the network (no WoL needed while WoL mode is on) — all as the fake predicts; the `-PtvIp` runner is still to be wired | M |
+| 1 | **Code DONE 2026-09-10** (47 tests green, written red first): `BraviaClient` — PIN + PSK auth, power, state, volume/mute/step, sound output, inputs, apps, now-playing, IRCC with the TV's own code table, text entry; `WakeOnLan`; `SsdpDiscovery`; `LanTransport` (Wi-Fi-bound). Real-TV contract run through Alec's phone (2026-09-10): pairing, IRCC, all reads, volume nudge, sound output speaker↔audioSystem, power off→standby→on over the network (no WoL needed while WoL mode is on) — all as the fake predicts; the `-PtvIp` runner was dropped for the in-app Self-test (§5 rule 4) | M |
 | 2 | **2a Sonos DONE 2026-09-10** (9 tests red-first): `SonosClient` — description, volume/step/mute, night sound, speech enhancement, transport, source, switch-to-TV, whole-house topology + home-theatre group. **2b Roku deferred to last** at Alec's request: `RokuClient` — ECP keypress, launch, app list (real list captured), device info, active app, Limited-mode detection | S |
-| 3 | **Built 2026-09-10 and VERIFIED on the S26 at the owner's house the same day**: wizard found + paired the TV and picked the Arc; remote shows On · KD-85X80CK, inputs by CEC name, 37 apps, live Sonos state; volume-up moved the Arc 25→26 over the network. Unconnected HDMI ports hidden when CEC devices are listed (0.2.0); discovery re-check pending. 3a `RemoteController` (14 tests red-first: state, D4 routing, power with WoL + polling, actions, fix-the-sound, pairing, error surfacing), `UpdateChecker` (3), `SelfTest` (3); 3b Compose UI: Remote screen, Setup wizard (SSDP or typed address → PIN → Sonos), Diagnostics with Self-test, Copy report, update banner; DataStore settings. v0.1.0 installed on the S26 and published. **v0.2.0 (4) built, installed on the S26 and published 2026-09-10** from Alec's first-use feedback: voice commands (`VoiceCommandParser` grammar + mic button via RecognizerIntent, CEC device names beat stale port labels), text entry pre-checks `textInputActive()` and explains when no TV text box has focus (Sony answers Illegal State otherwise), and the app no longer drops back to the connect screen after minimising (Wi-Fi Network resolved per connection, `lastKnown` + quiet refresh under a Reconnecting banner). 91 tests green. On-device check of the three with Alec pending | L |
+| 3 | **Built 2026-09-10 and VERIFIED on the S26 at the owner's house the same day**: wizard found + paired the TV and picked the Arc; remote shows On · KD-85X80CK, inputs by CEC name, 37 apps, live Sonos state; volume-up moved the Arc 25→26 over the network. Unconnected HDMI ports hidden when CEC devices are listed (0.2.0); discovery re-check pending. 3a `RemoteController` (14 tests red-first: state, D4 routing, power with WoL + polling, actions, fix-the-sound, pairing, error surfacing), `UpdateChecker` (3), `SelfTest` (3); 3b Compose UI: Remote screen, Setup wizard (SSDP or typed address → PIN → Sonos), Diagnostics with Self-test, Copy report, update banner; DataStore settings. v0.1.0 installed on the S26 and published. **v0.2.0 (4) built, installed on the S26 and published 2026-09-10** from Alec's first-use feedback: voice commands (`VoiceCommandParser` grammar + mic button via RecognizerIntent, CEC device names beat stale port labels), text entry pre-checks `textInputActive()` and explains when no TV text box has focus (Sony answers Illegal State otherwise), and the app no longer drops back to the connect screen after minimising (Wi-Fi Network resolved per connection, `lastKnown` + quiet refresh under a Reconnecting banner). 91 tests green. **v0.2.1 (5) 2026-09-10 — scope reconciliation (§8)**: error log (last 20, timestamps, Clear, in the Copy report), key repeat on hold + haptic tick + coalesced volume, TV re-found by MAC when DHCP moves it, pre-shared key fallback on the pairing step, the full key set under More keys, Self-test gains discoverable / wake-on-LAN / update checks. 98 tests green. On-device check of 0.2.0/0.2.1 with Alec pending | L |
 | 4 | Acceptance pass on the S26 at the owner's house (`ACCEPTANCE.md`, contract write-tests), then v1.0 published and installed on the owner's phone from the page. `OWNER-GUIDE.md` (one page with pictures), `DEPLOY.md`. Fixes ship as releases he pulls with the Update banner. | S |
 
 Honest estimate: Stage 1 and Stage 3 are the bulk. Everything else is a day-scale item.
@@ -168,14 +179,16 @@ Honest estimate: Stage 1 and Stage 3 are the bulk. Everything else is a day-scal
 ```powershell
 $env:JAVA_HOME = "C:\Program Files\Java\jdk-21"
 Set-Location C:\projects\hearth-tv
-.\tools\gradle-8.9\bin\gradle.bat test                       # JVM suite, seconds
-.\tools\gradle-8.9\bin\gradle.bat contract -PtvIp=10.10.10.85   # only when a phone/PC is on the owner's LAN
-.\tools\gradle-8.9\bin\gradle.bat assembleRelease            # refuses if tests are red
+$gradle = "C:\projects\fitness-app\tools\gradle-8.9\bin\gradle.bat"   # or .\gradlew.bat
+& $gradle testDebugUnitTest          # JVM suite, seconds
+& $gradle assembleRelease            # refuses if tests are red
+.\install-s26.ps1                    # build + silent install on Alec's S26 through Hearth
+.\publish.ps1 -Notes "..."           # tests -> signed APK -> GitHub release -> version.json -> push
 ```
 
 Test builds → Alec's S26, zero taps: `assembleRelease` → `scp` to the Pi appshelf → Hearth `shell_exec` on the S26
-downloads it over the tunnel and runs `pm install -r` (Shizuku), then `am start`. The contract suite (`-PtvIp`)
-runs against the real TV whenever the S26 is on the owner's Wi-Fi, through the same Hearth path.
+downloads it over the tunnel and runs `pm install -r` (Shizuku), then `am start`. The Self-test on the phone is the
+contract suite: run it from Diagnostics whenever the S26 is on the owner's Wi-Fi.
 
 Publish (one script, `publish.ps1`): tests → `assembleRelease` → `gh release create vX.Y hearth-tv.apk` →
 write `docs/version.json` (versionCode, versionName, APK URL, notes) → push; GitHub Pages redeploys in about a
@@ -196,7 +209,7 @@ the same. Fallback: Quick Share the APK from Alec's phone.
   (if the Pi at 10.10.10.5 is Alec's, that is the obvious host) or Sonos's cloud API for the audio half. v2 at
   the earliest, and a separate scope.
 - **Casting media from the phone.** Cast SDK + a receiver app registration. v2.
-- **Voice.** On-device `SpeechRecognizer` + a fixed grammar ("volume up", "open Prime", "switch to Roku"). v2.
+- ~~**Voice.**~~ Shipped in 0.2.0, exactly as sketched: the phone's recogniser + a fixed grammar.
 - **iOS.** This is an Android APK. If the owner carries an iPhone, none of this ships (§7, question 1).
 - **Anything that changes TV settings** beyond sound output and power. No picture modes, no network settings.
 
@@ -218,6 +231,43 @@ The list below is kept as the record of what was asked.
 7. **GitHub**: one public repo, `hearth-tv`, under the **Willits-Alec** account (the one `gh` is logged into;
    `awillits-sketch` is the other). Fixtures are scrubbed and the keystore stays out of git. OK?
 8. **D4 confirmation**: volume buttons drive the Sonos whenever the TV is on Audio system. Yes?
+
+## 8. Delivery ledger — the scope checked against the build (2026-09-10)
+
+Every promise in §4 and §5, where it lives, and its state. "Amended" means the intent is met another way and the
+reason is recorded here; nothing was dropped silently.
+
+| Promise (section) | Where | State |
+|---|---|---|
+| Power on/off with WoL + polling (4.1) | `RemoteController.powerToggle`, `WakeOnLan` | shipped 0.1.0, verified on the TV |
+| State line (4.1) | `StatusCard`, `readTv` | shipped 0.1.0 |
+| Volume/mute routed per D4 (4.1) | `volumeTarget`, `volumeStep`, `toggleMute` | shipped 0.1.0, Arc 25→26 verified |
+| Inputs by real name, current highlighted (4.1) | `InputsRow` (CEC first, stale ports hidden) | shipped 0.1.0, hiding 0.2.0 |
+| Apps: favourites row + full list (4.1) | `AppsRow` (13 favourites when installed, "All N") | shipped 0.1.0 |
+| Buttons incl. Guide, numbers, Sony extras (4.1) | `DPad`, `MediaRow`, `MoreKeys` | D-pad/media 0.1.0; Guide, Input, Exit, Options, Ch ±, Subtitles, Audio, 0–9, Netflix, YouTube, colours **0.2.1**. No Prime key exists on this TV |
+| Sound output toggle, Fix the sound (4.1) | `SoundCard`, `fixSound` | shipped 0.1.0 |
+| Type on the TV (4.1) | `TypeCard`, `typeText` + `textInputActive` pre-check | shipped 0.1.0, pre-check 0.2.0 |
+| Sonos row: volume, mute, night, speech, source (4.1, D5) | `SoundCard`, `SonosClient` | shipped 0.1.0 |
+| Roku tile (4.1, D8) | `RokuClient` + tile | **pending — Stage 2b**, last by Alec's order; FakeRoku + fixtures ready |
+| Voice (4.3 → v1) | `VoiceCommandParser`, mic button | shipped 0.2.0 |
+| Setup wizard: SSDP + manual address → PIN → Sonos (4.2) | `SetupViewModel`, `SetupScreen` | shipped 0.1.0, verified at the owner's house |
+| PSK as the advanced fallback (D2) | pairing step → "Use a pre-shared key" | **0.2.1** (client support since 0.1.0) |
+| Re-find the TV if DHCP moves it (4.2) | `TvRelocator` (by MAC), `RemoteViewModel.maybeRelocate` | **0.2.1**; UUID replaced by the MAC already stored at setup |
+| Self-test with Copy report (4.2) | `SelfTest`, Diagnostics | shipped 0.1.0; discoverable / wake-on-LAN / update checks **0.2.1** |
+| Update check + banner (4.2) | `UpdateChecker`, `UpdateBanner` | shipped 0.1.0, banner seen on the S26 |
+| Diagnostics: last 20 errors with timestamps, Copy (4.2) | `ErrorLog`, Diagnostics screen | **0.2.1** |
+| Plain-language errors (4.2) | hints in `RemoteController`, `SetupViewModel.describe`, VPN note | shipped 0.1.1 |
+| Wi-Fi binding of every socket (4.2) | `WifiLanTransport` (Network resolved per connection) | shipped 0.1.0, per-connection 0.2.0 |
+| Standby → big power button, poll after power-on (4.2) | `RemoteScreen`, `powerToggle` | shipped 0.1.0 |
+| Debounced volume, key repeat on hold, haptic tick (4.2) | `RemoteViewModel.volumeStep` (coalesced), `HoldButton`, `tick()` | **0.2.1** |
+| No background work (4.2) | manifest: no service, no receiver | shipped 0.1.0 |
+| Raw request passthrough (4.3) | — | **amended: dropped**; Self-test + error log + Copy report cover the need |
+| Fixtures first, red → green (5) | `fixtures/`, `Fake*`, every test file | followed; `fixtures/README.md` records each capture |
+| Robolectric Compose UI tests (5) | — | **amended**: the Compose layer only renders state and forwards taps; it is checked on the S26 with `ACCEPTANCE.md`, and all behaviour sits in JVM-tested layers |
+| `-PtvIp` contract task (5 rule 4) | — | **amended**: no dev machine is ever on that LAN; the in-app Self-test is the contract suite and was run from the S26 |
+| `assembleRelease` gated on the suite (5 rule 6) | `app/build.gradle.kts` | in force (98 tests green at this writing) |
+| Public repo, Pages, Releases, version.json, keystore out of git (D7) | `publish.ps1`, `docs/`, `.gitignore` | in force since v0.0.1 |
+| Acceptance walk, OWNER-GUIDE, icon, v1.0 (Stage 4, D9) | `ACCEPTANCE.md`, `OWNER-GUIDE.md` | **pending — Stage 4** |
 
 ---
 

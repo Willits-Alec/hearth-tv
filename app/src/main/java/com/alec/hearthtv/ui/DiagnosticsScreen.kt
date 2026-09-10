@@ -33,6 +33,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
@@ -107,6 +108,23 @@ fun DiagnosticsScreen(vm: DiagnosticsViewModel, onBack: () -> Unit, onRepair: ()
                                 Text(if (c.passed) "PASS" else "FAIL", color = if (c.passed) Good else Bad, fontFamily = FontFamily.Monospace, modifier = Modifier.padding(end = 10.dp))
                                 Text("${c.name} — ${c.detail}", style = MaterialTheme.typography.bodySmall)
                             }
+                        }
+                    }
+                }
+            }
+
+            Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.padding(top = 8.dp)) {
+                Text("Recent errors", style = MaterialTheme.typography.titleMedium, color = PaperDim, modifier = Modifier.weight(1f))
+                if (s.errors.isNotEmpty()) TextButton(onClick = { vm.clearErrors() }) { Text("Clear") }
+            }
+            if (s.errors.isEmpty()) {
+                Text("None since the app was opened.", color = PaperDim, style = MaterialTheme.typography.bodySmall)
+            } else {
+                Card(colors = CardDefaults.cardColors(containerColor = Slate)) {
+                    Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                        s.errors.forEach { e ->
+                            Text("${e.at.replace('T', ' ')}  ·  ${e.source}", color = PaperDim, fontFamily = FontFamily.Monospace, style = MaterialTheme.typography.labelSmall)
+                            Text(e.message, style = MaterialTheme.typography.bodySmall)
                         }
                     }
                 }
