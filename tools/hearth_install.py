@@ -8,6 +8,7 @@ usage: python tools/hearth_install.py [device]        (default device: s26)
 Requires: the Hearth gateway running locally (C:/projects/hearth/gateway) and ssh alias `pi`.
 """
 import json
+import os
 import re
 import subprocess
 import sys
@@ -23,7 +24,10 @@ SHELF_URL = "http://192.168.50.26:8820/hearth-tv.apk"
 PACKAGE = "com.alec.hearthtv"
 
 sys.path.insert(0, r"C:\projects\hearth\gateway")
+_cwd = os.getcwd()
+os.chdir(r"C:\projects\hearth\gateway")  # the gateway settings read their .env from the working directory
 from app.config import settings  # noqa: E402
+os.chdir(_cwd)
 
 TOKEN = settings.GATEWAY_AUTH_TOKEN
 

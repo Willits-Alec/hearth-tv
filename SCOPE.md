@@ -155,7 +155,7 @@ net/           WifiBoundHttp: OkHttp + sockets bound to the Wi-Fi Network   ← 
 
 | Stage | Contents | Size |
 |---|---|---|
-| 0 | Repo skeleton from the Reach template, new keystore (outside git), scrubbed fixtures committed, FakeBraviaServer + FakeSonos, empty app that builds; GitHub repo + Pages page + `publish.ps1` + silent-install script for the S26, so a v0.0 is downloadable and installed from day one | S |
+| 0 | **DONE 2026-09-10.** Repo skeleton from the Reach template, new keystore (outside git), 30 scrubbed fixtures, FakeBraviaServer + FakeSonos + FakeRoku with 20 green JVM tests, `assembleRelease` gated on the suite, public repo `Willits-Alec/hearth-tv` + Pages page + `publish.ps1` + `install-s26.ps1`; v0.0.1 published and installed on the S26 | S |
 | 1 | `BraviaClient` complete: PIN + PSK auth, power (incl. WoL), state, volume/mute, inputs, apps, IRCC, text entry, sound output; `Discovery`; `WifiBoundHttp`. All JVM-tested, contract-tested read-only | M |
 | 2 | `SonosClient`: discovery, group coordinator, volume/mute, night sound, speech enhancement, switch-to-TV, source; `RokuClient`: ECP keypress, launch, app list, device info, active app. JVM + contract | S |
 | 3 | `RemoteViewModel` (state machine, D4 routing, standby polling, error surfacing) + Compose UI: Remote screen, Setup wizard, Diagnostics with Self-test, Copy report and Update check | L |
