@@ -1,7 +1,7 @@
 {
-  "versionCode": 7,
-  "versionName": "0.3.1",
+  "versionCode": 8,
+  "versionName": "0.4.0",
   "apkUrl": "https://github.com/Willits-Alec/hearth-tv/releases/latest/download/hearth-tv.apk",
-  "notes": "You can now add the Roku (or change the Sonos) from Diagnostics without pairing the TV again.",
-  "publishedAt": "2026-09-10T18:31:24Z"
+  "notes": "A real app icon, and a one-page guide linked from this page: setup, the volume, Fix the sound, typing on the TV, the microphone, the Roku, and what to do if something looks wrong.",
+  "publishedAt": "2026-09-10T18:50:27Z"
 }
