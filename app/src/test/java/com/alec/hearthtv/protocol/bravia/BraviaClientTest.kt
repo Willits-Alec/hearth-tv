@@ -42,6 +42,10 @@ class BraviaClientTest {
         assertEquals("5.7.0", info.interfaceVersion)
     }
 
+    @Test fun `the wake-on-LAN MAC is readable before pairing`() = runTest {
+        assertEquals("02:00:00:00:00:85", client.wolMac())
+    }
+
     @Test fun `power status reads active and standby`() = runTest {
         assertEquals(PowerState.ACTIVE, client.powerStatus())
         tv.power = "standby"

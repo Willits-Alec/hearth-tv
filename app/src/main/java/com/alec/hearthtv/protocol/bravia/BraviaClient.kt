@@ -147,6 +147,10 @@ class BraviaClient(
 
     suspend fun wolMode(): Boolean = rpc("system", "getWolMode").jsonArray[0].jsonObject.bool("enabled")
 
+    /** The MAC to wake the TV with, from the ungated `getSystemSupportedFunction` — available before pairing. */
+    suspend fun wolMac(): String? = rpc("system", "getSystemSupportedFunction").jsonArray[0].jsonArray
+        .firstOrNull { it.jsonObject.str("option") == "WOL" }?.jsonObject?.str("value")?.ifBlank { null }
+
     /** The TV's own IRCC table (name → base64 code), fetched once and cached. */
     suspend fun remoteCodes(): Map<String, String> {
         codesCache?.let { return it }
