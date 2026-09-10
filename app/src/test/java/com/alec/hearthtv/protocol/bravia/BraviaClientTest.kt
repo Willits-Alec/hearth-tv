@@ -56,6 +56,17 @@ class BraviaClientTest {
         assertEquals(100, v.max)
     }
 
+    @Test fun `volume in standby is Sony error 40005, Display Is Turned off`() = runTest {
+        tv.power = "standby"
+        try {
+            client.volume()
+            fail("expected RpcError 40005")
+        } catch (e: BraviaException.RpcError) {
+            assertEquals(40005, e.code)
+            assertEquals("Display Is Turned off", e.reason)
+        }
+    }
+
     @Test fun `sound output reads the audio system`() = runTest {
         assertEquals(SoundOutput.AUDIO_SYSTEM, client.soundOutput())
     }

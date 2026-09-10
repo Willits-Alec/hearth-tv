@@ -102,7 +102,8 @@ class FakeBraviaServer : AutoCloseable {
                 power = if (params.first().jsonObject["status"]!!.jsonPrimitive.boolean) "active" else "standby"
                 result(id, "[]")
             }
-            "audio" to "getVolumeInformation" -> result(
+            // In standby the real TV refuses the volume query (verified 2026-09-10): 40005 "Display Is Turned off".
+            "audio" to "getVolumeInformation" -> if (power != "active") error(id, 40005, "Display Is Turned off") else result(
                 id, """[[{"target":"speaker","volume":$volume,"mute":$muted,"maxVolume":100,"minVolume":0}]]""",
             )
             "audio" to "setAudioVolume" -> setAudioVolume(id, params)

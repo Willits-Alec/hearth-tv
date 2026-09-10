@@ -36,7 +36,10 @@ class FakeSonos : AutoCloseable {
         server.start()
     }
 
-    override fun close() = server.shutdown()
+    private var closed = false
+    override fun close() {
+        if (!closed) { closed = true; server.shutdown() }
+    }
 
     private fun handle(req: RecordedRequest): MockResponse {
         val path = req.path ?: return MockResponse().setResponseCode(404)
