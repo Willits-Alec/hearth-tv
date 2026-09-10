@@ -17,6 +17,9 @@ import com.alec.hearthtv.HearthGraph
 object Routes {
     const val REMOTE = "remote"
     const val SETUP = "setup"
+
+    /** The wizard opened at one step, for adding a device to an install that is already set up. */
+    fun setupAt(step: SetupViewModel.Step) = "setup/${step.name}"
     const val DIAGNOSTICS = "diagnostics"
 }
 
@@ -47,12 +50,23 @@ fun HearthTvNavHost() {
                 },
             )
         }
+        composable("setup/{step}") { entry ->
+            val vm: SetupViewModel = viewModel()
+            val step = runCatching { SetupViewModel.Step.valueOf(entry.arguments?.getString("step").orEmpty()) }
+                .getOrDefault(SetupViewModel.Step.FIND_TV)
+            SetupScreen(
+                vm = vm,
+                onDone = { nav.navigate(Routes.REMOTE) { popUpTo(Routes.REMOTE) { inclusive = true } } },
+                startStep = step,
+            )
+        }
         composable(Routes.DIAGNOSTICS) {
             val vm: DiagnosticsViewModel = viewModel()
             DiagnosticsScreen(
                 vm = vm,
                 onBack = { nav.popBackStack() },
                 onRepair = { nav.navigate(Routes.SETUP) },
+                onOpenStep = { step -> nav.navigate(Routes.setupAt(step)) },
             )
         }
     }

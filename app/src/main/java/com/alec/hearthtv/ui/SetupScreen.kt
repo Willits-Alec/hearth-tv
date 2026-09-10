@@ -41,9 +41,9 @@ import com.alec.hearthtv.remote.PairingState
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SetupScreen(vm: SetupViewModel, onDone: () -> Unit) {
+fun SetupScreen(vm: SetupViewModel, onDone: () -> Unit, startStep: SetupViewModel.Step = SetupViewModel.Step.FIND_TV) {
     val s by vm.state.collectAsState()
-    LaunchedEffect(Unit) { if (s.step == SetupViewModel.Step.FIND_TV && s.foundTvs.isEmpty()) vm.searchTv() }
+    LaunchedEffect(startStep) { vm.startAt(startStep) }
 
     Scaffold(
         topBar = { TopAppBar(title = { Text("Set up Hearth TV", fontWeight = FontWeight.SemiBold) }, colors = TopAppBarDefaults.topAppBarColors(containerColor = Ink)) },

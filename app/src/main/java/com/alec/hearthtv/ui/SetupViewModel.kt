@@ -41,6 +41,17 @@ class SetupViewModel : ViewModel() {
     val state: StateFlow<State> = _state.asStateFlow()
     private var controller: RemoteController? = null
 
+    /** Open the wizard at one step: the whole flow from the start, or straight to the Sonos or the Roku. */
+    fun startAt(step: Step) {
+        if (_state.value.step != Step.FIND_TV || _state.value.busy) return
+        when (step) {
+            Step.FIND_TV -> if (_state.value.foundTvs.isEmpty()) searchTv()
+            Step.FIND_SONOS -> { _state.update { it.copy(step = Step.FIND_SONOS) }; searchSonos() }
+            Step.FIND_ROKU -> { _state.update { it.copy(step = Step.FIND_ROKU) }; searchRoku() }
+            Step.PAIR, Step.DONE -> Unit
+        }
+    }
+
     // ── step 1: the TV ──────────────────────────────────────────────────────────────────────────────
 
     fun searchTv() = viewModelScope.launch {

@@ -46,7 +46,12 @@ import com.alec.hearthtv.update.UpdateStatus
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun DiagnosticsScreen(vm: DiagnosticsViewModel, onBack: () -> Unit, onRepair: () -> Unit) {
+fun DiagnosticsScreen(
+    vm: DiagnosticsViewModel,
+    onBack: () -> Unit,
+    onRepair: () -> Unit,
+    onOpenStep: (SetupViewModel.Step) -> Unit = {},
+) {
     val s by vm.state.collectAsState()
     val clipboard = LocalClipboardManager.current
     val context = LocalContext.current
@@ -131,6 +136,18 @@ fun DiagnosticsScreen(vm: DiagnosticsViewModel, onBack: () -> Unit, onRepair: ()
             }
 
             Text("Setup", style = MaterialTheme.typography.titleMedium, color = PaperDim, modifier = Modifier.padding(top = 8.dp))
+            Text(
+                "Add a device without pairing the TV again, or start the whole wizard over.",
+                color = PaperDim, style = MaterialTheme.typography.bodySmall,
+            )
+            Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                OutlinedButton(onClick = { onOpenStep(SetupViewModel.Step.FIND_ROKU) }) {
+                    Text(if (s.settings?.rokuHost == null) "Add the Roku" else "Change the Roku")
+                }
+                OutlinedButton(onClick = { onOpenStep(SetupViewModel.Step.FIND_SONOS) }) {
+                    Text(if (s.settings?.sonosHost == null) "Add the Sonos" else "Change the Sonos")
+                }
+            }
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 OutlinedButton(onClick = onRepair) { Text("Run setup again") }
                 TextButton(onClick = { vm.forgetEverything(); onRepair() }) { Text("Forget everything") }
