@@ -48,6 +48,10 @@ data class RemoteUiState(
     val pairing: PairingState = PairingState.Unknown,
     val busy: Boolean = false,
     val lastError: String? = null,
+    /** The last good TV read, so the controls stay on screen while the TV is briefly unreachable. */
+    val lastKnown: TvState.On? = null,
+    /** True while the TV cannot be reached but we have a last known screen to keep showing. */
+    val reconnecting: Boolean = false,
 ) {
     val volumeTarget: VolumeTarget
         get() = if ((tv as? TvState.On)?.output == SoundOutput.AUDIO_SYSTEM && sonos is SonosState.Ready) VolumeTarget.SONOS

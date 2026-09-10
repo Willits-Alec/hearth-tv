@@ -3,12 +3,15 @@ package com.alec.hearthtv.remote
 import com.alec.hearthtv.protocol.bravia.BraviaClient
 import com.alec.hearthtv.protocol.bravia.BraviaCredentials
 import com.alec.hearthtv.protocol.bravia.BraviaException
+import com.alec.hearthtv.protocol.bravia.InputKind
 import com.alec.hearthtv.protocol.bravia.PairingStart
 import com.alec.hearthtv.protocol.bravia.PowerState
 import com.alec.hearthtv.protocol.bravia.SoundOutput
 import com.alec.hearthtv.protocol.bravia.TvApp
 import com.alec.hearthtv.protocol.sonos.SonosClient
 import com.alec.hearthtv.protocol.sonos.SonosException
+import com.alec.hearthtv.voice.VoiceCommand
+import com.alec.hearthtv.voice.VoiceCommandParser
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -44,11 +47,22 @@ class RemoteController(
 
     // ── reading ─────────────────────────────────────────────────────────────────────────────────────
 
-    suspend fun refresh() {
-        _state.update { it.copy(busy = true, lastError = null) }
+    /**
+     * Re-read everything. A quiet refresh (background timer, resume) never raises [RemoteUiState.busy] and never
+     * clears an error the person has not seen yet; a loud one (the refresh button) does both.
+     */
+    suspend fun refresh(quiet: Boolean = false) {
+        if (!quiet) _state.update { it.copy(busy = true, lastError = null) }
         val (tvState, pairing) = readTv()
         val sonosState = readSonos()
-        _state.update { it.copy(tv = tvState, pairing = pairing, sonos = sonosState, busy = false) }
+        _state.update { s ->
+            val lastKnown = (tvState as? TvState.On) ?: s.lastKnown
+            s.copy(
+                tv = tvState, pairing = pairing, sonos = sonosState, busy = false,
+                lastKnown = lastKnown,
+                reconnecting = tvState is TvState.Unreachable && lastKnown != null,
+            )
+        }
     }
 
     private suspend fun readTv(): Pair<TvState, PairingState> {
@@ -167,7 +181,13 @@ class RemoteController(
 
     suspend fun key(name: String) = action { tv.sendKey(name) }
 
-    suspend fun typeText(text: String) = action { tv.typeText(text) }
+    suspend fun typeText(text: String) = action {
+        if (!tv.textInputActive()) {
+            _state.update { it.copy(lastError = "Open a text box on the TV first — a search field or a sign-in box — then send again.") }
+            return@action
+        }
+        tv.typeText(text)
+    }
 
     suspend fun setOutput(output: SoundOutput) = action {
         tv.setSoundOutput(output)
@@ -192,6 +212,39 @@ class RemoteController(
     suspend fun setSpeechEnhancement(on: Boolean) = action {
         sonos?.setSpeechEnhancement(on)
         updateSonos { it.copy(speechEnhancement = on) }
+    }
+
+    // ── voice ───────────────────────────────────────────────────────────────────────────────────────
+
+    /** Runs one spoken instruction and returns the words to show the person. */
+    suspend fun voice(heard: String): String {
+        val on = (_state.value.tv as? TvState.On) ?: _state.value.lastKnown
+        val cmd = VoiceCommandParser(
+            apps = on?.apps?.map { it.title } ?: emptyList(),
+            // CEC devices first so a spoken name lands on the device, not on a stale port label
+            inputs = on?.inputs?.sortedBy { if (it.kind == InputKind.CEC_DEVICE) 0 else 1 }?.map { it.displayName } ?: emptyList(),
+        ).parse(heard)
+        when (cmd) {
+            is VoiceCommand.Volume -> volumeStep(cmd.steps)
+            is VoiceCommand.Mute -> setMuteRouted(cmd.on)
+            is VoiceCommand.Power -> if (cmd.on != (_state.value.tv is TvState.On)) powerToggle()
+            is VoiceCommand.LaunchApp -> on?.apps?.firstOrNull { it.title == cmd.app }?.let { launchApp(it.uri) }
+            is VoiceCommand.SelectInput -> on?.inputs?.firstOrNull { it.displayName == cmd.input }?.let { selectInput(it.uri) }
+            is VoiceCommand.Key -> key(cmd.key)
+            VoiceCommand.FixSound -> fixSound()
+            is VoiceCommand.NightMode -> setNightMode(cmd.on)
+            is VoiceCommand.SpeechEnhancement -> setSpeechEnhancement(cmd.on)
+            is VoiceCommand.TypeText -> typeText(cmd.text)
+            is VoiceCommand.Unknown -> _state.update { it.copy(lastError = cmd.describe()) }
+        }
+        return cmd.describe()
+    }
+
+    private suspend fun setMuteRouted(mute: Boolean) = action {
+        when (_state.value.volumeTarget) {
+            VolumeTarget.SONOS -> { sonos!!.setMute(mute); updateSonos { it.copy(muted = mute) } }
+            VolumeTarget.TV -> { tv.setMute(mute); updateTv { it.copy(muted = mute) } }
+        }
     }
 
     // ── pairing ─────────────────────────────────────────────────────────────────────────────────────

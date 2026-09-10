@@ -9,6 +9,7 @@ import com.alec.hearthtv.remote.RemoteController
 import com.alec.hearthtv.remote.RemoteUiState
 import com.alec.hearthtv.update.UpdateStatus
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -59,6 +60,8 @@ class RemoteViewModel : ViewModel() {
     }
 
     fun refresh() = act { refresh() }
+    /** Background refresh: no progress bar, no error wipe. Used by the timer and on resume. */
+    fun refreshQuiet() = act { refresh(quiet = true) }
     fun powerToggle() = act { powerToggle() }
     fun volumeUp() = act { volumeUp() }
     fun volumeDown() = act { volumeDown() }
@@ -74,4 +77,12 @@ class RemoteViewModel : ViewModel() {
     fun startPairing() = act { startPairing() }
     fun completePairing(pin: String) = act { completePairing(pin) }
     fun recheckUpdate() = viewModelScope.launch { _update.value = HearthGraph.updateChecker().check() }
+
+    /** One-line confirmations for the snackbar (voice results). */
+    val toasts = MutableSharedFlow<String>(extraBufferCapacity = 4)
+
+    fun voice(heard: String) {
+        val c = controller ?: return
+        viewModelScope.launch { actions.withLock { toasts.emit(c.voice(heard)) } }
+    }
 }

@@ -8,6 +8,8 @@ import okhttp3.Dns
 import okhttp3.OkHttpClient
 import java.net.DatagramSocket
 import java.net.InetAddress
+import java.net.Socket
+import javax.net.SocketFactory
 import java.util.concurrent.TimeUnit
 
 /**
@@ -41,14 +43,30 @@ class WifiLanTransport(context: Context) : LanTransport {
         } == true
     }
 
-    override fun http(): OkHttpClient {
-        val n = wifiNetwork() ?: return baseClient().build()
-        return baseClient()
-            .socketFactory(n.socketFactory)
-            .dns(object : Dns {
-                override fun lookup(hostname: String): List<InetAddress> = n.getAllByName(hostname).toList()
-            })
-            .build()
+    /**
+     * The Wi-Fi [Network] object changes whenever Wi-Fi reconnects (screen off, roaming), so it is resolved on
+     * every connection instead of being captured once — a captured one goes stale and every call fails until
+     * the app restarts, which looked like "keeps reconnecting" on the test phone.
+     */
+    override fun http(): OkHttpClient = baseClient()
+        .socketFactory(DynamicWifiSocketFactory())
+        .dns(DynamicWifiDns())
+        .build()
+
+    private inner class DynamicWifiSocketFactory : SocketFactory() {
+        private fun delegate(): SocketFactory = wifiNetwork()?.socketFactory ?: getDefault()
+        override fun createSocket(): Socket = delegate().createSocket()
+        override fun createSocket(host: String?, port: Int): Socket = delegate().createSocket(host, port)
+        override fun createSocket(host: String?, port: Int, localHost: InetAddress?, localPort: Int): Socket =
+            delegate().createSocket(host, port, localHost, localPort)
+        override fun createSocket(host: InetAddress?, port: Int): Socket = delegate().createSocket(host, port)
+        override fun createSocket(address: InetAddress?, port: Int, localAddress: InetAddress?, localPort: Int): Socket =
+            delegate().createSocket(address, port, localAddress, localPort)
+    }
+
+    private inner class DynamicWifiDns : Dns {
+        override fun lookup(hostname: String): List<InetAddress> =
+            wifiNetwork()?.getAllByName(hostname)?.toList() ?: Dns.SYSTEM.lookup(hostname)
     }
 
     override fun udpSocket(): DatagramSocket = DatagramSocket().also { s -> wifiNetwork()?.bindSocket(s) }

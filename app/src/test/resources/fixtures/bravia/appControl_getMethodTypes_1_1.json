@@ -1,0 +1,23 @@
+{
+  "results": [
+    [
+      "getTextForm",
+      [
+        "{\"encKey\":\"string\"}"
+      ],
+      [
+        "{\"text\":\"string\"}"
+      ],
+      "1.1"
+    ],
+    [
+      "setTextForm",
+      [
+        "{\"encKey\":\"string\", \"text\":\"string\"}"
+      ],
+      [],
+      "1.1"
+    ]
+  ],
+  "id": 1
+}

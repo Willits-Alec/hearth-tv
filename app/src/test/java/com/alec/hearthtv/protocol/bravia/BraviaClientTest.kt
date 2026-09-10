@@ -231,8 +231,17 @@ class BraviaClientTest {
         } catch (_: BraviaException.UnknownKey) { }
     }
 
-    @Test fun `typeText lands in the TV's text field`() = runTest {
+    @Test fun `typeText lands in the TV's text field when one is focused`() = runTest {
         pair()
+        assertFalse(client.textInputActive())
+        try {
+            client.typeText("dune part two")
+            fail("expected Illegal State while no text field is focused")
+        } catch (e: BraviaException.RpcError) {
+            assertEquals(7, e.code)
+        }
+        tv.textInputActive = true
+        assertTrue(client.textInputActive())
         client.typeText("dune part two")
         assertEquals("dune part two", tv.lastTextForm)
     }

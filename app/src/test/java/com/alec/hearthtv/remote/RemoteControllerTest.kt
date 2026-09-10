@@ -7,6 +7,7 @@ import com.alec.hearthtv.protocol.bravia.BraviaCredentials
 import com.alec.hearthtv.protocol.bravia.SoundOutput
 import com.alec.hearthtv.protocol.sonos.SonosClient
 import com.alec.hearthtv.protocol.sonos.SourceKind
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.test.runTest
 import okhttp3.OkHttpClient
 import org.junit.After
@@ -173,6 +174,10 @@ class RemoteControllerTest {
         c.key("Home")
         assertEquals(listOf("Return", "Home"), tv.irccSent)
         c.typeText("dune")
+        assertNull(tv.lastTextForm)                                              // no text box on the TV yet
+        assertTrue(c.state.value.lastError!!.contains("text box"))
+        tv.textInputActive = true
+        c.typeText("dune")
         assertEquals("dune", tv.lastTextForm)
     }
 
@@ -215,6 +220,48 @@ class RemoteControllerTest {
         c.refresh()
         assertEquals(PairingState.Paired, c.state.value.pairing)
         assertNotNull((c.state.value.tv as TvState.On).apps.firstOrNull())
+    }
+
+    // ── resilience (the "connect to the TV" screen after backgrounding) ────────────────────────────
+
+    @Test fun `losing the TV after a good read keeps the last known screen and flags reconnecting`() = runTest {
+        val c = controller()
+        c.refresh()
+        val before = c.state.value.tv as TvState.On
+        tv.close()
+        c.refresh()
+        val s = c.state.value
+        assertTrue(s.tv is TvState.Unreachable)
+        assertEquals(before, s.lastKnown)                    // controls stay drawable from this
+        assertTrue(s.reconnecting)
+    }
+
+    @Test fun `a quiet refresh never raises busy`() = runTest {
+        val c = controller()
+        var sawBusy = false
+        val job = launch(kotlinx.coroutines.Dispatchers.Unconfined) { c.state.collect { if (it.busy) sawBusy = true } }
+        c.refresh(quiet = true)
+        job.cancel()
+        assertFalse(sawBusy)
+        assertTrue(c.state.value.tv is TvState.On)
+    }
+
+    // ── voice ──────────────────────────────────────────────────────────────────────────────────────
+
+    @Test fun `voice commands route through the same actions`() = runTest {
+        val c = controller()
+        c.refresh()
+        assertEquals("Volume up", c.voice("volume up"))
+        assertEquals(18, arc.volume)
+        assertEquals("Open Prime Video", c.voice("open prime"))
+        assertTrue(tv.activeAppUri!!.contains("amazon"))
+        assertEquals("Switch to Roku Ultra", c.voice("switch to roku"))
+        assertTrue(tv.activeInputUri!!.startsWith("extInput:cec"))
+        assertEquals("Pause", c.voice("pause"))
+        assertEquals(listOf("Pause"), tv.irccSent)
+        val unknown = c.voice("make me a sandwich")
+        assertTrue(unknown.contains("Didn't catch"))
+        assertTrue(unknown.contains("make me a sandwich"))
     }
 
     @Test fun `a failing action surfaces once in lastError and does not poison the state`() = runTest {

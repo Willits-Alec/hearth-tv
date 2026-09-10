@@ -2,6 +2,9 @@ package com.alec.hearthtv.ui
 
 import android.content.Intent
 import android.net.Uri
+import android.speech.RecognizerIntent
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -34,6 +37,7 @@ import androidx.compose.material.icons.rounded.KeyboardArrowLeft
 import androidx.compose.material.icons.rounded.KeyboardArrowRight
 import androidx.compose.material.icons.rounded.KeyboardArrowUp
 import androidx.compose.material.icons.rounded.Menu
+import androidx.compose.material.icons.rounded.Mic
 import androidx.compose.material.icons.rounded.Pause
 import androidx.compose.material.icons.rounded.PlayArrow
 import androidx.compose.material.icons.rounded.PowerSettingsNew
@@ -45,7 +49,6 @@ import androidx.compose.material.icons.rounded.Stop
 import androidx.compose.material.icons.rounded.VolumeDown
 import androidx.compose.material.icons.rounded.VolumeOff
 import androidx.compose.material.icons.rounded.VolumeUp
-import androidx.compose.material3.AssistChip
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -76,16 +79,17 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.compose.LifecycleResumeEffect
 import com.alec.hearthtv.protocol.bravia.InputKind
 import com.alec.hearthtv.protocol.bravia.SoundOutput
 import com.alec.hearthtv.protocol.bravia.TvApp
@@ -97,6 +101,7 @@ import com.alec.hearthtv.remote.TvState
 import com.alec.hearthtv.remote.VolumeTarget
 import com.alec.hearthtv.update.UpdateStatus
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 private val FAVOURITES = listOf(
     "Prime Video", "YouTube", "Netflix", "Apple TV", "Hulu", "Paramount+", "Peacock TV", "Disney+", "Max",
@@ -111,16 +116,32 @@ fun RemoteScreen(vm: RemoteViewModel, onOpenSetup: () -> Unit, onOpenDiagnostics
     val update by vm.update.collectAsState()
     val snackbar = remember { SnackbarHostState() }
     val context = LocalContext.current
+    val scope = rememberCoroutineScope()
 
-    // Keep the screen honest while it is in front: light refresh every 8 s.
+    // Quiet background refresh: no progress bar, no flicker. Immediately on resume, then every 8 s.
+    LifecycleResumeEffect(Unit) {
+        vm.refreshQuiet()
+        onPauseOrDispose { }
+    }
     LaunchedEffect(Unit) {
         while (true) {
             delay(8000)
-            vm.refresh()
+            vm.refreshQuiet()
         }
     }
-    LaunchedEffect(ui.lastError) {
-        ui.lastError?.let { snackbar.showSnackbar(it) }
+    LaunchedEffect(ui.lastError) { ui.lastError?.let { snackbar.showSnackbar(it) } }
+    LaunchedEffect(Unit) { vm.toasts.collect { snackbar.showSnackbar(it) } }
+
+    val voiceLauncher = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+        result.data?.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS)?.firstOrNull()?.let { vm.voice(it) }
+    }
+    val startVoice: () -> Unit = {
+        val intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
+            putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
+            putExtra(RecognizerIntent.EXTRA_PROMPT, "Say a TV command — “volume up”, “open Prime”, “switch to Roku”")
+        }
+        runCatching { voiceLauncher.launch(intent) }
+            .onFailure { scope.launch { snackbar.showSnackbar("This phone has no speech recogniser available.") } }
     }
 
     Scaffold(
@@ -128,6 +149,7 @@ fun RemoteScreen(vm: RemoteViewModel, onOpenSetup: () -> Unit, onOpenDiagnostics
             TopAppBar(
                 title = { Text("Hearth TV", fontWeight = FontWeight.SemiBold) },
                 actions = {
+                    IconButton(onClick = startVoice) { Icon(Icons.Rounded.Mic, "Voice command") }
                     IconButton(onClick = { vm.refresh() }) { Icon(Icons.Rounded.Refresh, "Refresh") }
                     IconButton(onClick = onOpenDiagnostics) { Icon(Icons.Rounded.Build, "Diagnostics") }
                     IconButton(onClick = onOpenSetup) { Icon(Icons.Rounded.Settings, "Setup") }
@@ -148,20 +170,25 @@ fun RemoteScreen(vm: RemoteViewModel, onOpenSetup: () -> Unit, onOpenDiagnostics
 
             StatusCard(ui, settings?.tvModel, onPower = { vm.powerToggle() })
 
-            when (val tv = ui.tv) {
-                is TvState.On -> {
+            // Keep the remote usable from the last good read while the TV is briefly out of reach.
+            val live = ui.tv as? TvState.On
+            val shown = live ?: ui.lastKnown.takeIf { ui.tv is TvState.Unreachable || ui.tv is TvState.Unknown }
+
+            when {
+                shown != null -> {
+                    if (live == null) ReconnectingBanner(ui.tv)
                     if (ui.pairing is PairingState.NeedsPairing) PairingCard(onOpenSetup)
-                    VolumeCluster(ui, onDown = { vm.volumeDown() }, onMute = { vm.toggleMute() }, onUp = { vm.volumeUp() })
-                    InputsRow(tv.inputs, tv.nowPlaying) { vm.selectInput(it) }
-                    AppsRow(tv.apps, tv.nowPlaying) { vm.launchApp(it) }
+                    VolumeCluster(ui, shown, onDown = { vm.volumeDown() }, onMute = { vm.toggleMute() }, onUp = { vm.volumeUp() })
+                    InputsRow(shown.inputs, shown.nowPlaying) { vm.selectInput(it) }
+                    AppsRow(shown.apps, shown.nowPlaying) { vm.launchApp(it) }
                     DPad(onKey = { vm.key(it) })
                     MediaRow(onKey = { vm.key(it) })
-                    SoundCard(ui, onFix = { vm.fixSound() }, onOutput = { vm.setOutput(it) }, onNight = { vm.setNightMode(it) }, onSpeech = { vm.setSpeechEnhancement(it) })
+                    SoundCard(ui, shown, onFix = { vm.fixSound() }, onOutput = { vm.setOutput(it) }, onNight = { vm.setNightMode(it) }, onSpeech = { vm.setSpeechEnhancement(it) })
                     TypeCard(onSend = { vm.typeText(it) })
                 }
-                TvState.Standby -> Hint("The TV is off. Tap the power button to wake it.")
-                is TvState.Unreachable -> Hint(tv.hint)
-                TvState.Unknown -> Hint(if (settings?.isConfigured == false) "No TV set up yet. Open Setup from the gear." else "Reading the TV…")
+                ui.tv == TvState.Standby -> Hint("The TV is off. Tap the power button to wake it.")
+                ui.tv is TvState.Unreachable -> Hint((ui.tv as TvState.Unreachable).hint)
+                else -> Hint(if (settings?.isConfigured == false) "No TV set up yet. Open Setup from the gear." else "Reading the TV…")
             }
             Spacer(Modifier.height(24.dp))
         }
@@ -169,6 +196,14 @@ fun RemoteScreen(vm: RemoteViewModel, onOpenSetup: () -> Unit, onOpenDiagnostics
 }
 
 // ── pieces ──────────────────────────────────────────────────────────────────────────────────────────
+
+@Composable
+private fun ReconnectingBanner(tv: TvState) {
+    val text = if (tv is TvState.Unreachable) "Reconnecting to the TV… buttons keep working as soon as it answers." else "Reading the TV…"
+    Box(Modifier.fillMaxWidth().background(SlateLight, RoundedCornerShape(12.dp)).padding(horizontal = 14.dp, vertical = 10.dp)) {
+        Text(text, style = MaterialTheme.typography.bodySmall, color = PaperDim)
+    }
+}
 
 @Composable
 private fun UpdateBanner(u: UpdateStatus.Available, onDownload: (String) -> Unit) {
@@ -188,7 +223,7 @@ private fun StatusCard(ui: RemoteUiState, model: String?, onPower: () -> Unit) {
     val (line, sub) = when (val tv = ui.tv) {
         is TvState.On -> ("On" + (tv.nowPlaying?.let { " · $it" } ?: "")) to (model ?: "Sony TV")
         TvState.Standby -> "Standby" to (model ?: "Sony TV")
-        is TvState.Unreachable -> "Not reachable" to tv.hint
+        is TvState.Unreachable -> (if (ui.reconnecting) "Reconnecting…" else "Not reachable") to tv.hint
         TvState.Unknown -> "…" to (model ?: "")
     }
     Card(colors = CardDefaults.cardColors(containerColor = Slate), shape = RoundedCornerShape(20.dp)) {
@@ -219,12 +254,11 @@ private fun PairingCard(onOpenSetup: () -> Unit) {
 }
 
 @Composable
-private fun VolumeCluster(ui: RemoteUiState, onDown: () -> Unit, onMute: () -> Unit, onUp: () -> Unit) {
-    val tv = ui.tv as? TvState.On
+private fun VolumeCluster(ui: RemoteUiState, tv: TvState.On, onDown: () -> Unit, onMute: () -> Unit, onUp: () -> Unit) {
     val sonos = ui.sonos as? SonosState.Ready
     val (label, level, muted) = when (ui.volumeTarget) {
         VolumeTarget.SONOS -> Triple("Sonos", sonos?.volume, sonos?.muted ?: false)
-        VolumeTarget.TV -> Triple("TV speakers", tv?.volume, tv?.muted ?: false)
+        VolumeTarget.TV -> Triple("TV speakers", tv.volume, tv.muted)
     }
     Card(colors = CardDefaults.cardColors(containerColor = Slate), shape = RoundedCornerShape(20.dp)) {
         Column(Modifier.padding(14.dp)) {
@@ -256,9 +290,11 @@ private fun BigButton(icon: ImageVector, description: String, modifier: Modifier
 
 @Composable
 private fun InputsRow(inputs: List<TvInput>, nowPlaying: String?, onSelect: (String) -> Unit) {
-    // CEC devices by name first (they are what the owner thinks of), then real ports that have nothing attached by name.
+    // Devices by their CEC name first; raw HDMI ports only when something is plugged in and no device claimed the port.
     val cec = inputs.filter { it.kind == InputKind.CEC_DEVICE }
-    val ports = inputs.filter { it.kind == InputKind.HDMI && cec.none { c -> c.port == it.port } }
+    val ports = inputs.filter { p ->
+        p.kind == InputKind.HDMI && cec.none { c -> c.port == p.port } && (p.connected || p.active || cec.isEmpty())
+    }
     val shown = cec + ports
     if (shown.isEmpty()) return
     Section("Inputs")
@@ -340,8 +376,7 @@ private fun MediaRow(onKey: (String) -> Unit) {
 }
 
 @Composable
-private fun SoundCard(ui: RemoteUiState, onFix: () -> Unit, onOutput: (SoundOutput) -> Unit, onNight: (Boolean) -> Unit, onSpeech: (Boolean) -> Unit) {
-    val tv = ui.tv as? TvState.On
+private fun SoundCard(ui: RemoteUiState, tv: TvState.On, onFix: () -> Unit, onOutput: (SoundOutput) -> Unit, onNight: (Boolean) -> Unit, onSpeech: (Boolean) -> Unit) {
     val sonos = ui.sonos
     Section("Sound")
     Card(colors = CardDefaults.cardColors(containerColor = Slate), shape = RoundedCornerShape(20.dp)) {
@@ -350,7 +385,7 @@ private fun SoundCard(ui: RemoteUiState, onFix: () -> Unit, onOutput: (SoundOutp
                 Column(Modifier.weight(1f)) {
                     Text("TV sound goes to", style = MaterialTheme.typography.bodyMedium, color = PaperDim)
                     Text(
-                        when (tv?.output) {
+                        when (tv.output) {
                             SoundOutput.AUDIO_SYSTEM -> "Sonos (Audio system)"
                             SoundOutput.TV_SPEAKER -> "TV speakers"
                             SoundOutput.HDMI -> "HDMI"
@@ -360,8 +395,8 @@ private fun SoundCard(ui: RemoteUiState, onFix: () -> Unit, onOutput: (SoundOutp
                         style = MaterialTheme.typography.titleMedium,
                     )
                 }
-                FilledTonalButton(onClick = { onOutput(if (tv?.output == SoundOutput.AUDIO_SYSTEM) SoundOutput.TV_SPEAKER else SoundOutput.AUDIO_SYSTEM) }) {
-                    Text(if (tv?.output == SoundOutput.AUDIO_SYSTEM) "Use TV speakers" else "Use Sonos")
+                FilledTonalButton(onClick = { onOutput(if (tv.output == SoundOutput.AUDIO_SYSTEM) SoundOutput.TV_SPEAKER else SoundOutput.AUDIO_SYSTEM) }) {
+                    Text(if (tv.output == SoundOutput.AUDIO_SYSTEM) "Use TV speakers" else "Use Sonos")
                 }
             }
             Button(onClick = onFix, modifier = Modifier.fillMaxWidth(), colors = ButtonDefaults.buttonColors(containerColor = Ember, contentColor = Ink)) {
@@ -394,6 +429,10 @@ private fun ToggleRow(icon: ImageVector, label: String, checked: Boolean, onChan
 private fun TypeCard(onSend: (String) -> Unit) {
     var text by rememberSaveable { mutableStateOf("") }
     Section("Type on the TV")
+    Text(
+        "Works while a text box is open on the TV — a search field or a sign-in screen. Open it with the remote first, then send.",
+        style = MaterialTheme.typography.bodySmall, color = PaperDim,
+    )
     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         OutlinedTextField(
             value = text, onValueChange = { text = it }, modifier = Modifier.weight(1f), singleLine = true,

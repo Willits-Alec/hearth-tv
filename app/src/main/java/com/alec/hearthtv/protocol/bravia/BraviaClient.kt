@@ -229,10 +229,19 @@ class BraviaClient(
         rpc("appControl", "setActiveApp", params(buildJsonObject { put("uri", uri) }))
     }
 
-    /** Types into whatever text field the TV currently shows (search boxes, passwords). */
+    /**
+     * Types into the text field the TV currently shows (search boxes, passwords). Sony answers `7 Illegal State`
+     * when no field is focused — check [textInputActive] first and tell the person what to open.
+     */
     suspend fun typeText(text: String) {
         rpc("appControl", "setTextForm", params(JsonPrimitive(text)))
     }
+
+    /** Whether the TV has a text field focused right now (`getApplicationStatusList` → textInput on/off). */
+    suspend fun textInputActive(): Boolean =
+        rpc("appControl", "getApplicationStatusList").jsonArray[0].jsonArray.any {
+            it.jsonObject.str("name") == "textInput" && it.jsonObject.str("status") == "on"
+        }
 
     /** `null` when the TV is on its launcher or inside an app — Sony answers `7 Illegal State` there. */
     suspend fun nowPlaying(): NowPlaying? = try {

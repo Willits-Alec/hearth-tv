@@ -1,0 +1,98 @@
+{
+  "results": [
+    [
+      "getApplicationList",
+      [],
+      [
+        "{\"title\":\"string\", \"uri\":\"string\", \"icon\":\"string\", \"data\":\"string\"}*"
+      ],
+      "1.0"
+    ],
+    [
+      "getApplicationStatusList",
+      [],
+      [
+        "{\"name\":\"string\", \"status\":\"string\"}*"
+      ],
+      "1.0"
+    ],
+    [
+      "getWebAppStatus",
+      [],
+      [
+        "{\"active\":\"bool\", \"url\":\"string\"}"
+      ],
+      "1.0"
+    ],
+    [
+      "installApp",
+      [
+        "{\"assetId\":\"string\", \"afterIstallAction\":\"string\", \"uri\":\"string\", \"autorunScript\":\"string\"}"
+      ],
+      [],
+      "1.0"
+    ],
+    [
+      "prepareAppUpload",
+      [],
+      [
+        "{\"assetId\":\"string\"}"
+      ],
+      "1.0"
+    ],
+    [
+      "setActiveApp",
+      [
+        "{\"uri\":\"string\", \"data\":\"string\"}"
+      ],
+      [],
+      "1.0"
+    ],
+    [
+      "setTextForm",
+      [
+        "string"
+      ],
+      [
+        "int"
+      ],
+      "1.0"
+    ],
+    [
+      "terminateApps",
+      [],
+      [],
+      "1.0"
+    ],
+    [
+      "uninstallApp",
+      [
+        "{\"packageName\":\"string\", \"autorunScript\":\"string\"}"
+      ],
+      [],
+      "1.0"
+    ],
+    [
+      "getMethodTypes",
+      [
+        "string"
+      ],
+      [
+        "string",
+        "string*",
+        "string*",
+        "string"
+      ],
+      "1.0"
+    ],
+    [
+      "getVersions",
+      [],
+      [
+        "string*"
+      ],
+      "1.0"
+    ]
+  ],
+  "id": 1
+}

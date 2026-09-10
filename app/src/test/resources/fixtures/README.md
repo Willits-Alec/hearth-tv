@@ -17,6 +17,7 @@ values live in gitignored `local/SITE.md`. **Never hand-edit a fixture** — re-
 | getCurrentExternalInputsStatus_onRoku, getPlayingContentInfo_roku | the same two calls with the TV ON and the Roku in front: CEC devices appear as `extInput:cec?...` entries titled "Roku Ultra" / "Sonos Arc"; now-playing has an empty `source` and the device name as `title` |
 | getSchemeList, getSourceList_extInput, getContentList_cec | the TV's content tree: schemes `tv`/`extInput`, sources hdmi/composite/cec, and the CEC device list |
 | getPlayingContentInfo | `[7, "Illegal State"]` — what the TV says on the home screen / inside an app; "no content", not an error |
+| getApplicationStatusList, setTextForm_noTextField, appControl_getMethodTypes_1_0 / _1_1 | text entry: `textInput` on/off status; `setTextForm` v1.0 answers `[7, "Illegal State"]` while no TV text field is focused; the appControl signatures for v1.0 (plain string) and v1.1 (encrypted) |
 | ircc_Display.xml | HTTP 200 SOAP reply to `X_SendIRCC` (Display key) with the cookie |
 | eureka_info | Cast endpoint `http://<tv>:8008/setup/eureka_info`, unauthenticated |
 

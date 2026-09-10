@@ -38,6 +38,8 @@ class FakeBraviaServer : AutoCloseable {
     var activeInputUri: String? = null           // null = launcher/app in front (Illegal State)
     var activeAppUri: String? = null
     var lastTextForm: String? = null
+    /** Whether a text field is focused on the TV; setTextForm is `7 Illegal State` otherwise (verified 2026-09-10). */
+    var textInputActive: Boolean = false
     var paired: Boolean = false
     var pinShown: Boolean = false
     var wolMode: Boolean = true
@@ -146,7 +148,15 @@ class FakeBraviaServer : AutoCloseable {
                 activeInputUri = null
                 result(id, "[]")
             }
-            "appControl" to "setTextForm" -> { lastTextForm = params.first().jsonPrimitive.content; result(id, "[]") }
+            "appControl" to "setTextForm" -> {
+                if (!textInputActive) return error(id, 7, "Illegal State")
+                lastTextForm = params.first().jsonPrimitive.content
+                result(id, "[0]")
+            }
+            "appControl" to "getApplicationStatusList" -> result(
+                id,
+                """[[{"name":"textInput","status":"${if (textInputActive) "on" else "off"}"},{"name":"textInputSuspended","status":"off"},{"name":"cursorDisplay","status":"on"},{"name":"webBrowse","status":"off"}]]""",
+            )
             "accessControl" to "getMethodTypes" -> fixture("bravia/accessControl_getMethodTypes.json", id)
             "guide" to "getSupportedApiInfo" -> fixture("bravia/getSupportedApiInfo.json", id)
             else -> error(id, 12, "No Such Method")
