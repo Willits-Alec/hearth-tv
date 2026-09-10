@@ -1,7 +1,7 @@
 {
-  "versionCode": 5,
-  "versionName": "0.2.1",
+  "versionCode": 6,
+  "versionName": "0.3.0",
   "apkUrl": "https://github.com/Willits-Alec/hearth-tv/releases/latest/download/hearth-tv.apk",
-  "notes": "Volume and arrow keys repeat while held, every press ticks, more remote keys (guide, numbers, colours), Diagnostics now lists recent errors, the app finds the TV again if its address changes, and a pre-shared key can pair the TV if the code never shows.",
-  "publishedAt": "2026-09-10T18:12:35Z"
+  "notes": "The Roku is in: a Roku section appears once you pick the box in setup, with its own pad, transport keys and channel list, and it switches the TV to the Roku for you.",
+  "publishedAt": "2026-09-10T18:29:08Z"
 }
