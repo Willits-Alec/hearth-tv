@@ -33,12 +33,18 @@ Copy-Item app\build\outputs\apk\release\app-release.apk dist\hearth-tv.apk -Forc
 
 # 2. GitHub release with the APK as the asset (the /releases/latest/download/hearth-tv.apk link follows it).
 $tag = "v$versionName"
-$existing = gh release view $tag 2>$null
-if ($LASTEXITCODE -eq 0) {
+# PS 5.1: a native command's stderr under ErrorActionPreference=Stop can abort the script, so probe leniently.
+$prevEap = $ErrorActionPreference
+$ErrorActionPreference = "Continue"
+gh release view $tag *> $null
+$exists = ($LASTEXITCODE -eq 0)
+$ErrorActionPreference = $prevEap
+$utf8 = New-Object Text.UTF8Encoding $false
+if ($exists) {
     gh release upload $tag dist\hearth-tv.apk --clobber
 } else {
-    $notesFile = New-TemporaryFile
-    Set-Content -Path $notesFile -Value $Notes -Encoding utf8
+    $notesFile = [IO.Path]::GetTempFileName()
+    [IO.File]::WriteAllText($notesFile, $Notes, $utf8)
     gh release create $tag dist\hearth-tv.apk --title "Hearth TV $versionName" --notes-file $notesFile
     Remove-Item $notesFile
 }
@@ -52,11 +58,11 @@ $json = @{
     notes       = $Notes
     publishedAt = (Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ")
 } | ConvertTo-Json
-[IO.File]::WriteAllText((Join-Path $PSScriptRoot "docs\version.json"), $json + "`n", (New-Object Text.UTF8Encoding $false))
+[IO.File]::WriteAllText((Join-Path $PSScriptRoot "docs\version.json"), $json + "`n", $utf8)
 
 git add docs/version.json
-$msg = New-TemporaryFile
-Set-Content -Path $msg -Value "release: v$versionName ($versionCode)" -Encoding utf8
+$msg = [IO.Path]::GetTempFileName()
+[IO.File]::WriteAllText($msg, "release: v$versionName ($versionCode)", $utf8)
 git commit -F $msg | Out-Null
 Remove-Item $msg
 git push
