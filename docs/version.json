@@ -1,7 +1,7 @@
 {
-  "versionCode": 4,
-  "versionName": "0.2.0",
+  "versionCode": 5,
+  "versionName": "0.2.1",
   "apkUrl": "https://github.com/Willits-Alec/hearth-tv/releases/latest/download/hearth-tv.apk",
-  "notes": "Voice control from the mic button, a clear message when you type but no TV text box is open, and the remote stays connected when you come back to the app.",
-  "publishedAt": "2026-09-10T17:42:47Z"
+  "notes": "Volume and arrow keys repeat while held, every press ticks, more remote keys (guide, numbers, colours), Diagnostics now lists recent errors, the app finds the TV again if its address changes, and a pre-shared key can pair the TV if the code never shows.",
+  "publishedAt": "2026-09-10T18:12:35Z"
 }
