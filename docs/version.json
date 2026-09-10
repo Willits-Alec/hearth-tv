@@ -1,7 +1,7 @@
 {
-  "versionCode": 0,
-  "versionName": "0.0.0",
-  "apkUrl": "https://github.com/Willits-Alec/hearth-tv/releases/latest/download/hearth-tv.apk",
-  "notes": "Nothing published yet.",
-  "publishedAt": ""
+    "apkUrl":  "https://github.com/Willits-Alec/hearth-tv/releases/latest/download/hearth-tv.apk",
+    "publishedAt":  "2026-09-10T15:18:58Z",
+    "versionCode":  1,
+    "versionName":  "0.0.1",
+    "notes":  "Stage 0: installs and launches; the remote arrives with the next builds."
 }
