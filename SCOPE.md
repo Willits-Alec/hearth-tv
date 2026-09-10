@@ -4,7 +4,7 @@ Standalone Android app that runs the **Family Room TV** (Sony KD-85X80CK) and it
 group from the owner's phone, over his own Wi-Fi, with nothing else installed anywhere. A port of the TV tile in
 Alec's Hearth app, re-built for a house that has no Hearth gateway, no WireGuard and no Alec on hand to fix things.
 
-Status: **SCOPE COMPLETE IN CODE 2026-09-10 — every v1 feature in §4 is built; §8 checks each promise against the code. Stages 0–3 verified on the S26; v0.2.1 closed the last §4.2 items; v0.3.0 adds the Roku tile (Stage 2b), the last v1 feature. Stage 4 is under way: the real icon and `OWNER-GUIDE.md` shipped in v0.4.0. Remaining: the acceptance walk on the S26 at the owner's house, then v1.0 for the owner's phone. §9 records Alec's next-round requests (touchpad, volume bar, volume feedback, Sonos voice), to start after that.**
+Status: **SCOPE COMPLETE IN CODE 2026-09-10 — every v1 feature in §4 is built; §8 checks each promise against the code. Stages 0–3 verified on the S26; v0.2.1 closed the last §4.2 items; v0.3.0 adds the Roku tile (Stage 2b), the last v1 feature. Stage 4 is under way: the real icon and `OWNER-GUIDE.md` shipped in v0.4.0, and §9's next round shipped in v0.5.0 (touchpad, volume bar, volume through the TV as an option, faster volume reads, voice search). Remaining: the acceptance walk on the S26 at the owner's house, then v1.0 for the owner's phone.**
 Revised 2026-09-10: Alec's S26 is the test device and the owner receives a finished product (D6); one public repo
 publishes a download page with an in-app update banner (D7); pairing is by PIN, no TV-menu visit needed (D2).
 
@@ -269,11 +269,17 @@ reason is recorded here; nothing was dropped silently.
 | Public repo, Pages, Releases, version.json, keystore out of git (D7) | `publish.ps1`, `docs/`, `.gitignore` | in force since v0.0.1 |
 | OWNER-GUIDE, proper icon (Stage 4, D9) | `OWNER-GUIDE.md`, `docs/index.html`, `ic_launcher_*` | shipped 0.4.0 |
 | Acceptance walk, v1.0 (Stage 4) | `ACCEPTANCE.md` | **pending — needs Alec at the owner's house** |
+| Swipe touchpad (9.1, D10) | `TouchpadTranslator`, `ui/Touchpad`, toggle on both pads | shipped 0.5.0 |
+| Volume bar (9.2) | `setVolumeLevel`, `VolumeCommitter`, the card's slider | shipped 0.5.0 |
+| Volume through the TV (9.3, D11) | `volumeViaTv` setting, Diagnostics switch | shipped 0.5.0, off by default |
+| Volume that follows other remotes (9.3) | `refreshVolume` on a 2 s timer | shipped 0.5.0; **amended**: a poll, not the GENA event stream, for the reason in §9.3 |
+| Voice search on the TV (9.4) | `VoiceCommand.SearchTv`, `searchTv` | shipped 0.5.0; the assistant key needs one real-TV check |
+| Hands-free wake word (9.4, D12) | — | not built; needs a foreground service, against D1 |
 
-## 9. Next scope — Alec's requests, 2026-09-10 (v0.4, after Stage 4)
+## 9. Alec's requests, 2026-09-10 — **BUILT in v0.5.0**
 
-Recorded the day he first used the remote, to be built **after** the current scope closes (Stage 4: acceptance
-walk, owner guide, icon, v1.0). Each item says what it is, how it would be built, and what still needs deciding.
+Recorded the day he first used the remote and built the same day, after he answered the four open decisions.
+Each item below says what it is, what shipped, and where the build differs from the plan.
 
 ### 9.1 A swipe touchpad instead of the D-pad buttons
 
@@ -285,19 +291,26 @@ Roku card gets the same toggle and sends ECP keys instead of IRCC keys. The choi
 - Every emitted key ticks, exactly like the buttons do now.
 - The translator (drag distance → list of keys, tap timing → OK / Back) is pure Kotlin, so it is TDD'd against
   synthetic gesture streams; only the thin Compose `pointerInput` wrapper is untested code.
-- **D10 to decide:** a double tap for Back means OK cannot fire until the double-tap window (about 250 ms) has
-  passed. Either OK gets that delay, or OK stays instant and Back keeps a button on the card. Recommendation:
-  take the 250 ms delay — the network round trip is already about that, and the gesture Alec asked for is worth it.
+- **D10 ANSWERED (Alec, 2026-09-10): take the delay.** A lone tap becomes OK once its 250 ms window closes, so
+  a double tap can mean Back. **Shipped 0.5.0:** `remote/TouchpadTranslator.kt` holds every rule and has 10 tests
+  of its own; `ui/Touchpad.kt` only feeds it coordinates. The toggle sits top-right of the Navigate card and of the
+  Roku card, is remembered in settings, and drives IRCC keys for the TV and ECP keys for the Roku.
+- One behaviour worth knowing: emissions track where the finger **is**, not how far it moved since the last frame,
+  so the number of keys always matches the gesture and a long drag cannot drift out of step.
 
 ### 9.2 Volume as a bar you drag, not only a rocker
 
 Replace the ± rocker with a horizontal level bar (drag to set, absolute), keeping the ± buttons beside it for one
 step at a time and the mute button as it is.
 
-- Both clients already do absolute volume: Sonos `SetVolume`, and the TV's `audio.setAudioVolume` with a level.
-- A drag fires far too many values, so it needs latest-wins throttling (about 5 per second) plus a guaranteed
-  send on release; today's coalescing only handles relative steps, so that is new plumbing worth its own tests.
-- The bar reads its range from the device: Sonos is 0–100, the TV reports its own min and max.
+**Shipped 0.5.0.** The card now has a bar above the buttons; the buttons and mute are untouched.
+
+- `RemoteController.setVolumeLevel` sends an absolute level to whichever device the buttons are driving, clamped
+  to that device's range: Sonos 0–100, or the TV's own reported min and max.
+- `remote/VolumeCommitter.kt` throttles the drag: one call in flight, at least 180 ms apart, everything superseded
+  in between dropped, and the value the finger stopped on always sent. It sends the **newest** value rather than a
+  stale first one, which its 5 tests pin.
+- While a finger is on the bar it owns the number; the device's own reading takes over again on release.
 
 ### 9.3 Why the TV shows no volume change (and what to do about it)
 
@@ -310,11 +323,15 @@ real system on 2026-09-10 (Arc 25 → 26) and against the Sonos app.
 What is genuinely missing is feedback **on the TV**, and there is a way to get it, from a real finding the same
 day: the TV's own volume control drives the Arc over CEC in 2-unit steps and does draw the on-screen bar.
 
-- **D11 to decide:** add a setting, *Show volume on the TV*, that routes volume through the TV instead of straight
-  to the Arc. Cost: 2-unit granularity and CEC's flakiness. Default off. Recommendation: add it as a setting, not
-  as the default, and put a "the Arc says 26" confirmation line under the volume bar for the direct path.
-- Also worth doing in the same pass: subscribe to the Sonos UPnP event stream (GENA) so the bar follows changes
-  made by the Sonos app or the Arc's own remote, instead of waiting for the 8-second refresh.
+- **D11 ANSWERED (Alec, 2026-09-10): add it, default off.** **Shipped 0.5.0** as *Show volume on the TV* in
+  Diagnostics. On, the TV changes the volume and draws its own bar, in steps of two over CEC; off, the app talks
+  to the Arc directly, one step at a time. The volume card names which device it is driving either way.
+- **Followed the bar's live number instead of GENA, deliberately.** The plan said subscribe to the Sonos UPnP
+  event stream. That needs an HTTP server listening on the phone plus subscription renewal, which is a new failure
+  mode in a house nobody can visit, and it sits awkwardly with D1's "no background work". **Shipped instead:**
+  `RemoteController.refreshVolume`, a volume-only read every 2 seconds while the remote is open, alongside the
+  existing 8-second full refresh. The bar follows the Sonos app or a physical remote within about two seconds, with
+  no listening socket and nothing to renew. GENA stays available if two seconds ever proves too slow.
 
 ### 9.4 Tying the Sonos's voice control into the app
 
@@ -325,11 +342,14 @@ Asked: can the Arc's voice control drive this app, so everything is one system? 
   app's microphone.
 - **Already works, and can grow (free):** the app's own voice (0.2.0) drives the TV, the Roku and the Sonos from
   one grammar — volume, mute, night sound, speech enhancement, apps, inputs, keys. Adding phrases costs a test.
-- **Voice search on the TV (small, recommended):** mic → text → open the TV's search box and type it, using the
-  text entry that already ships. This is the "say what you want to watch" feature people actually mean.
-- **D12 to decide — hands-free.** A wake word on the phone needs `RECORD_AUDIO` and a foreground service, which
+- **Voice search on the TV: shipped 0.5.0.** "Search for the bear", "look up jaws" and "find top gun" are now
+  their own command rather than plain typing. It types into a box that is already open; if none is open it presses
+  the TV's assistant key, waits, and types into whatever that opened; if still nothing, it says so in plain words.
+  **One unknown left for the acceptance walk:** whether this TV's assistant key actually yields a text field. The
+  fake models both answers and all three branches are tested, so the app degrades cleanly either way.
+- **D12 still open — hands-free.** A wake word on the phone needs `RECORD_AUDIO` and a foreground service, which
   contradicts D1's "no background service". Only worth it if Alec wants the phone listening while it sits on the
-  arm of the couch.
+  arm of the couch. Not built.
 - **D13 to decide — the Alexa route.** "Alexa, turn on the TV" through the Arc would need a cloud endpoint and an
   account link: against D1 (LAN-only, no cloud, no account) and its own project if it ever happens.
 

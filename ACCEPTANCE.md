@@ -14,10 +14,17 @@ Tick every line. A line that fails blocks the release; fix, re-run the suite, re
 - [ ] Apps row launches Prime Video, YouTube, Netflix; the state line names the running app.
 - [ ] D-pad, Back, Home and play/pause reach the TV; holding Right repeats and the phone ticks per step.
 - [ ] Hold Volume up: the level climbs steadily and stops on release.
+- [ ] Drag the volume bar: the number follows your thumb, the Sonos app agrees when you let go, and the sound does not stutter.
+- [ ] Change the volume on the Sonos app: the bar in Hearth TV catches up within about two seconds.
+- [ ] Diagnostics, turn on **Show volume on the TV**: the volume buttons now draw the TV's own bar, in steps of two. Turn it back off.
 - [ ] More keys → Guide opens the TV guide; a number key and a colour key reach the TV.
+- [ ] Navigate card, tap the toggle top-right: swipe up, down, left and right each move the TV's highlight; a tap is OK; two quick taps go back.
+- [ ] The same toggle on the Roku card drives the Roku the same way. Turn it back off.
 - [ ] Type on the TV: text typed on the phone lands in a TV search box.
 - [ ] Type with no TV text box open: the app says so in plain words (no raw Illegal State error).
 - [ ] Voice: mic button, say "volume up", "open prime", "switch to roku", "pause"; each lands and the words shown match.
+- [ ] Voice search **with a search box already open**: say "search for the bear" and the words land in the box.
+- [ ] Voice search **from the home screen**: say "search for jaws". Either the TV opens a box and the words land, or the app says no box appeared. Tell Alec which happened — this is the one behaviour still unverified on the real TV.
 - [ ] Minimise the app for a minute, reopen: the remote is still drawn (Reconnecting banner at most), never the connect screen.
 - [ ] Fix the sound: output → Audio system and the Arc → TV input, confirmed on the Sonos app.
 - [ ] Setup step 4 finds the Roku (or takes its address); skipping it hides the Roku card entirely.

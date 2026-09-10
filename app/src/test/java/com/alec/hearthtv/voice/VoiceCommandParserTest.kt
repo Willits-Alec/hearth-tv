@@ -82,8 +82,12 @@ class VoiceCommandParserTest {
 
     @Test fun `typing and searching`() {
         assertEquals(VoiceCommand.TypeText("dune part two"), p("type dune part two"))
-        assertEquals(VoiceCommand.TypeText("the bear"), p("search for the bear"))
-        assertEquals(VoiceCommand.TypeText("jaws"), p("search jaws"))
+        assertEquals(VoiceCommand.TypeText("hunter2"), p("enter hunter2"))
+        // searching may have to open the box first, so it is its own command
+        assertEquals(VoiceCommand.SearchTv("the bear"), p("search for the bear"))
+        assertEquals(VoiceCommand.SearchTv("jaws"), p("search jaws"))
+        assertEquals(VoiceCommand.SearchTv("the wire"), p("look up the wire"))
+        assertEquals(VoiceCommand.SearchTv("top gun"), p("find top gun"))
     }
 
     @Test fun `anything else is Unknown and keeps the words`() {
@@ -99,5 +103,6 @@ class VoiceCommandParserTest {
         assertEquals("Open Netflix", VoiceCommand.LaunchApp("Netflix").describe())
         assertEquals("Switch to Roku Ultra", VoiceCommand.SelectInput("Roku Ultra").describe())
         assertEquals("Type “jaws”", VoiceCommand.TypeText("jaws").describe())
+        assertEquals("Search the TV for “jaws”", VoiceCommand.SearchTv("jaws").describe())
     }
 }

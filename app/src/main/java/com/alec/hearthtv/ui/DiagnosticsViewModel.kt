@@ -57,6 +57,9 @@ class DiagnosticsViewModel : ViewModel() {
 
     fun clearErrors() = HearthGraph.errorLog.clear()
 
+    /** SCOPE.md D11: route volume through the TV so its on-screen bar appears. */
+    fun setVolumeViaTv(on: Boolean) = viewModelScope.launch { HearthGraph.settings.update { it.copy(volumeViaTv = on) } }
+
     fun forgetEverything() = viewModelScope.launch { HearthGraph.settings.forgetAll() }
 
     /** Diagnostics text with the recent errors and the self-test report appended, for the Copy button. */

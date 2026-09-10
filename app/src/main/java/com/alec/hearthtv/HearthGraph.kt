@@ -57,6 +57,7 @@ object HearthGraph {
             clientId = s.clientId,
             errors = errorLog,
             roku = s.rokuHost?.let { roku(it) },
+            volumeViaTv = s.volumeViaTv,
         )
     }
 

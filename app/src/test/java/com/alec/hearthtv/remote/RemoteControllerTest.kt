@@ -273,6 +273,99 @@ class RemoteControllerTest {
         assertTrue(unknown.contains("make me a sandwich"))
     }
 
+    // ── the volume bar and the volume-through-the-TV option (§9.2, §9.3) ───────────────────────────
+
+    @Test fun `the bar sets an absolute level on the Sonos and reports the range`() = runTest {
+        val c = controller()
+        c.refresh()
+        assertEquals(VolumeTarget.SONOS, c.state.value.volumeTarget)
+        assertEquals(0..100, c.state.value.volumeRange)
+        c.setVolumeLevel(42)
+        assertEquals(42, arc.volume)
+        assertEquals(42, c.state.value.volumeLevel)
+    }
+
+    @Test fun `the bar clamps to the range instead of sending nonsense`() = runTest {
+        val c = controller()
+        c.refresh()
+        c.setVolumeLevel(500)
+        assertEquals(100, arc.volume)
+        c.setVolumeLevel(-8)
+        assertEquals(0, arc.volume)
+        assertNull(c.state.value.lastError)
+    }
+
+    @Test fun `routing volume through the TV drives the TV even while its sound goes to the Arc`() = runTest {
+        val c = RemoteController(
+            tv = BraviaClient(tv.baseUrl, http, BraviaCredentials.Cookie(tv.cookieValue, null)),
+            sonos = SonosClient(arc.baseUrl, http), credentials = creds, tvMac = null, wakeOnLan = {},
+            errors = errors, volumeViaTv = true,
+        )
+        c.refresh()
+        assertEquals(SoundOutput.AUDIO_SYSTEM, (c.state.value.tv as TvState.On).output)
+        assertEquals(VolumeTarget.TV, c.state.value.volumeTarget)      // the option wins over the routing rule
+        val before = arc.volume
+        c.setVolumeLevel(25)
+        assertEquals(25, tv.volume)
+        assertEquals(before, arc.volume)                                // the app never touched the Arc
+        assertEquals(25, c.state.value.volumeLevel)
+    }
+
+    @Test fun `the TV's own scale reaches the bar`() = runTest {
+        val c = RemoteController(
+            tv = BraviaClient(tv.baseUrl, http, BraviaCredentials.Cookie(tv.cookieValue, null)),
+            sonos = null, credentials = creds, tvMac = null, wakeOnLan = {}, errors = errors, volumeViaTv = true,
+        )
+        c.refresh()
+        val on = c.state.value.tv as TvState.On
+        assertEquals(0, on.volumeMin)
+        assertEquals(100, on.volumeMax)
+        assertEquals(0..100, c.state.value.volumeRange)
+    }
+
+    @Test fun `a volume-only refresh picks up a change made elsewhere and stays quiet`() = runTest {
+        val c = controller()
+        c.refresh()
+        arc.volume = 63                                                 // as if the Sonos app moved it
+        var sawBusy = false
+        val job = launch(kotlinx.coroutines.Dispatchers.Unconfined) { c.state.collect { if (it.busy) sawBusy = true } }
+        c.refreshVolume()
+        job.cancel()
+        assertEquals(63, c.state.value.volumeLevel)
+        assertFalse(sawBusy)
+        assertNull(c.state.value.lastError)
+    }
+
+    // ── voice search on the TV (§9.4) ──────────────────────────────────────────────────────────────
+
+    @Test fun `voice search types into a box that is already open`() = runTest {
+        tv.textInputActive = true
+        val c = controller()
+        c.refresh()
+        assertEquals("Search the TV for “the bear”", c.voice("search for the bear"))
+        assertEquals("the bear", tv.lastTextForm)
+        assertTrue(tv.irccSent.isEmpty())                               // no need to open anything
+    }
+
+    @Test fun `voice search asks the TV to open a box when the assistant key does that`() = runTest {
+        tv.assistsOpensTextInput = true
+        val c = controller()
+        c.refresh()
+        c.voice("search for jaws")
+        assertEquals(listOf("Assists"), tv.irccSent)
+        assertEquals("jaws", tv.lastTextForm)
+        assertNull(c.state.value.lastError)
+    }
+
+    @Test fun `voice search says so plainly when no box appears`() = runTest {
+        val c = controller()
+        c.refresh()
+        c.voice("search for jaws")
+        assertEquals(listOf("Assists"), tv.irccSent)
+        assertNull(tv.lastTextForm)
+        assertEquals(RemoteController.NO_SEARCH_BOX, c.state.value.lastError)
+    }
+
     // ── Roku (Stage 2b) ────────────────────────────────────────────────────────────────────────────
 
     @Test fun `refresh with a Roku fills its state from the box`() = runTest {

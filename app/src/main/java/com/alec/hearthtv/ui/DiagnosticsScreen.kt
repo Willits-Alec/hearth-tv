@@ -25,6 +25,7 @@ import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
@@ -115,6 +116,21 @@ fun DiagnosticsScreen(
                             }
                         }
                     }
+                }
+            }
+
+            Text("Volume", style = MaterialTheme.typography.titleMedium, color = PaperDim, modifier = Modifier.padding(top = 8.dp))
+            Card(colors = CardDefaults.cardColors(containerColor = Slate)) {
+                Row(Modifier.padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Column(Modifier.weight(1f)) {
+                        Text("Show volume on the TV")
+                        Text(
+                            "Off: the app changes the Sonos directly, one step at a time, and the TV shows nothing. " +
+                                "On: the TV changes it instead, so its own volume bar appears, but it moves in steps of two.",
+                            color = PaperDim, style = MaterialTheme.typography.bodySmall,
+                        )
+                    }
+                    Switch(checked = s.settings?.volumeViaTv == true, onCheckedChange = { vm.setVolumeViaTv(it) })
                 }
             }
 

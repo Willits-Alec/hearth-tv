@@ -18,6 +18,9 @@ sealed class TvState {
         val output: SoundOutput?,
         val inputs: List<TvInput>,
         val apps: List<TvApp>,
+        /** The TV's own scale, which is not always 0 to 100. */
+        val volumeMin: Int = 0,
+        val volumeMax: Int = 100,
     ) : TvState()
 }
 
@@ -62,8 +65,34 @@ data class RemoteUiState(
     val lastKnown: TvState.On? = null,
     /** True while the TV cannot be reached but we have a last known screen to keep showing. */
     val reconnecting: Boolean = false,
+    /**
+     * The owner asked for volume to go through the TV so its own on-screen bar appears (SCOPE.md §9.3, D11).
+     * Off by default: the TV relays to the Arc over CEC in steps of two, which is coarser than talking to the
+     * Arc directly.
+     */
+    val volumeViaTv: Boolean = false,
 ) {
     val volumeTarget: VolumeTarget
-        get() = if ((tv as? TvState.On)?.output == SoundOutput.AUDIO_SYSTEM && sonos is SonosState.Ready) VolumeTarget.SONOS
+        get() = if (!volumeViaTv && (tv as? TvState.On)?.output == SoundOutput.AUDIO_SYSTEM && sonos is SonosState.Ready) VolumeTarget.SONOS
         else VolumeTarget.TV
+
+    /** The scale the volume bar should span for whichever device the buttons are driving. */
+    val volumeRange: IntRange
+        get() = when (volumeTarget) {
+            VolumeTarget.SONOS -> 0..100
+            VolumeTarget.TV -> (tv as? TvState.On ?: lastKnown)?.let { it.volumeMin..it.volumeMax } ?: 0..100
+        }
+
+    /** The level to show, or null while it is unknown. */
+    val volumeLevel: Int?
+        get() = when (volumeTarget) {
+            VolumeTarget.SONOS -> (sonos as? SonosState.Ready)?.volume
+            VolumeTarget.TV -> (tv as? TvState.On ?: lastKnown)?.volume
+        }
+
+    val volumeMuted: Boolean
+        get() = when (volumeTarget) {
+            VolumeTarget.SONOS -> (sonos as? SonosState.Ready)?.muted ?: false
+            VolumeTarget.TV -> (tv as? TvState.On ?: lastKnown)?.muted ?: false
+        }
 }

@@ -7,6 +7,7 @@ import com.alec.hearthtv.data.AppSettings
 import com.alec.hearthtv.protocol.bravia.SoundOutput
 import com.alec.hearthtv.remote.RemoteController
 import com.alec.hearthtv.remote.RemoteUiState
+import com.alec.hearthtv.remote.VolumeCommitter
 import com.alec.hearthtv.remote.TvState
 import com.alec.hearthtv.update.UpdateStatus
 import kotlinx.coroutines.Job
@@ -38,6 +39,7 @@ class RemoteViewModel : ViewModel() {
     private var controller: RemoteController? = null
     private var stateJob: Job? = null
     private val actions = Mutex()
+    private var committer: VolumeCommitter? = null
 
     init {
         viewModelScope.launch {
@@ -57,6 +59,7 @@ class RemoteViewModel : ViewModel() {
             _ui.value = RemoteUiState()
             return
         }
+        committer = VolumeCommitter(viewModelScope) { level -> actions.withLock { c.setVolumeLevel(level) } }
         stateJob = viewModelScope.launch {
             c.state.collect { st ->
                 _ui.value = st
@@ -113,6 +116,12 @@ class RemoteViewModel : ViewModel() {
     fun setSpeechEnhancement(on: Boolean) = act { setSpeechEnhancement(on) }
     fun startPairing() = act { startPairing() }
     fun completePairing(pin: String) = act { completePairing(pin) }
+    /** The volume bar, throttled so a drag is a handful of calls rather than hundreds. */
+    fun setVolumeLevel(level: Int) { committer?.submit(level) }
+    /** A cheap volume-only read for the 2 s timer. */
+    fun refreshVolume() = act { refreshVolume() }
+    fun setVolumeViaTv(on: Boolean) = viewModelScope.launch { HearthGraph.settings.update { it.copy(volumeViaTv = on) } }
+    fun setTouchpad(on: Boolean) = viewModelScope.launch { HearthGraph.settings.update { it.copy(touchpad = on) } }
     fun rokuKey(key: String) = act { rokuKey(key) }
     fun rokuLaunch(appId: String) = act { rokuLaunch(appId) }
     fun rokuHome() = act { rokuHome() }

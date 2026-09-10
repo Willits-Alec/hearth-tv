@@ -40,6 +40,12 @@ class FakeBraviaServer : AutoCloseable {
     var lastTextForm: String? = null
     /** Whether a text field is focused on the TV; setTextForm is `7 Illegal State` otherwise (verified 2026-09-10). */
     var textInputActive: Boolean = false
+
+    /**
+     * Whether the assistant key opens something with a text field. Unverified on the real set, so it defaults to
+     * the pessimistic answer and voice search has to cope with both (SCOPE.md §9.4).
+     */
+    var assistsOpensTextInput: Boolean = false
     var paired: Boolean = false
     var pinShown: Boolean = false
     var wolMode: Boolean = true
@@ -217,6 +223,7 @@ class FakeBraviaServer : AutoCloseable {
                     """</s:Fault></s:Body></s:Envelope>""",
             )
         irccSent += name
+        if (name == "Assists" && assistsOpensTextInput) textInputActive = true
         val fixture = Fixtures.text("bravia/ircc_Display.xml")
         val soap = fixture.substringAfter("\n\n").ifBlank { fixture.substring(fixture.indexOf("<?xml")) }
         return MockResponse().setResponseCode(200)

@@ -28,11 +28,14 @@ The app walks through five steps and remembers everything afterwards.
 the TV on and off. When the TV is off, that button is all you need.
 
 **Volume** drives the Sonos whenever the TV's sound is set to the sound bar, which is the normal state. The line
-above the buttons always says which one it is driving. Hold a volume button to keep going.
+above the bar always says which one it is driving. Drag the bar to go straight to a level, hold a button to walk
+there a step at a time, or tap mute. If you change the volume from the Sonos app instead, the bar catches up within
+a couple of seconds.
 
 > The TV will **not** show its own volume bar on screen while the app is driving the Sonos. That is expected. The
 > app talks straight to the sound bar, so the TV never hears about it. The number in the app is the sound bar's
-> own answer, so if the number moves, the volume moved.
+> own answer, so if the number moves, the volume moved. If you would rather see the bar on the TV, there is a
+> switch for it under the spanner, called *Show volume on the TV*. It makes the volume move in twos.
 
 **Inputs** lists what is plugged in by name, so the Roku and the sound bar appear as themselves rather than as
 HDMI numbers. Empty sockets are hidden.
@@ -40,8 +43,9 @@ HDMI numbers. Empty sockets are hidden.
 **Apps** shows the ones you actually use. Tap *All* for the full list.
 
 **Navigate** is the arrow pad, with OK in the middle and Back, Home, Menu and Info beneath. Hold an arrow to
-repeat it. **More keys** opens the rest of the remote: the guide, channel up and down, the number keys, subtitles
-and the coloured buttons.
+repeat it. The button in the top right of that card swaps the arrows for a **swipe pad**: put your thumb on it and
+swipe to move, tap for OK, tap twice for Back. The Roku card has the same switch. **More keys** opens the rest of
+the remote: the guide, channel up and down, the number keys, subtitles and the coloured buttons.
 
 **Sound** has one button worth knowing: **Fix the sound**. If the TV is playing through its own speakers, or the
 sound bar is sitting on the wrong input, that one tap puts both back the way they should be. The night-sound and
@@ -51,7 +55,8 @@ speech-enhancement switches are the sound bar's own settings.
 keys for a search or a password. Open the box on the TV first, then send. The app tells you if no box is open.
 
 **The microphone** at the top takes a spoken instruction: *volume up*, *open Prime*, *switch to Roku*, *pause*,
-*fix the sound*. It repeats back what it understood.
+*fix the sound*. It repeats back what it understood. You can also search by voice: say *search for the bear* and it
+puts those words in the TV's search box, opening one first if it can.
 
 **Roku** appears as its own section once you have picked the box. Tapping *Switch to Roku* or a channel also
 switches the TV over for you, so you never have to change the input first.
@@ -87,4 +92,6 @@ Two things that are normal and not faults:
 | Watch something | Tap it in **Apps**, or a channel under **Roku** |
 | Search without the arrow keys | Open the search box on the TV, then **Type on the TV** |
 | Tell it what to do out loud | The microphone, top of the screen |
+| Search by voice | The microphone, then "search for…" |
+| Navigate with your thumb | The button top-right of the Navigate card |
 | Something is broken | Spanner, **Run self-test**, **Copy report**, send it to Alec |

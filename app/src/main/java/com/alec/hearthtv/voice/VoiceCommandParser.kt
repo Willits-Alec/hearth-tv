@@ -95,8 +95,12 @@ class VoiceCommandParser(apps: List<String>, inputs: List<String>) {
     }
 
     private fun typed(text: String): VoiceCommand? {
-        for (prefix in listOf("type ", "search for ", "search ", "look up ")) {
+        // "type X" puts X in a box that is already open; searching may also have to open the box first.
+        for (prefix in listOf("type ", "enter ")) {
             if (text.startsWith(prefix) && text.length > prefix.length) return VoiceCommand.TypeText(text.removePrefix(prefix).trim())
+        }
+        for (prefix in listOf("search for ", "search the tv for ", "search ", "look up ", "find ")) {
+            if (text.startsWith(prefix) && text.length > prefix.length) return VoiceCommand.SearchTv(text.removePrefix(prefix).trim())
         }
         return null
     }

@@ -37,18 +37,23 @@ class RemoteController(
     private val nickname: String = "Hearth TV",
     private val pollDelayMs: Long = 1000,
     private val powerOnTimeoutMs: Long = 15_000,
+    private val searchOpenDelayMs: Long = 1_500,
     /** Every failure lands here with a timestamp for the Diagnostics screen (SCOPE.md §4.2). */
     private val errors: ErrorLog = ErrorLog(),
     /** The Roku on one of the TV's HDMI ports, when the owner picked one in Setup (Stage 2b). */
     private val roku: RokuClient? = null,
+    /** Route volume through the TV rather than straight to the Sonos (SCOPE.md D11). */
+    volumeViaTv: Boolean = false,
 ) {
     companion object {
         const val WIFI_HINT = "Can't reach the TV. Is this phone on the home Wi-Fi, and is the TV plugged in?"
         const val SONOS_HINT = "Can't reach the Sonos. Is it powered and on the home Wi-Fi?"
         const val ROKU_HINT = "Can't reach the Roku. Is it plugged in and on the home Wi-Fi?"
+        const val NO_TEXT_BOX = "Open a text box on the TV first — a search field or a sign-in box — then send again."
+        const val NO_SEARCH_BOX = "The TV did not open a search box. Open one with the remote, then say it again."
     }
 
-    private val _state = MutableStateFlow(RemoteUiState())
+    private val _state = MutableStateFlow(RemoteUiState(volumeViaTv = volumeViaTv))
     val state: StateFlow<RemoteUiState> = _state.asStateFlow()
 
     /** Sony reports nothing while an app is in front, so remember what we launched until an input takes over. */
@@ -90,6 +95,7 @@ class RemoteController(
 
         val volume = runCatching { tv.volume() }.getOrNull()          // 40005 while switching off → null
         val output = runCatching { tv.soundOutput() }.getOrNull()
+        val range = volume?.let { it.min..it.max } ?: 0..100
         val inputs = runCatching { tv.inputs() }.getOrDefault(emptyList())
 
         var pairing: PairingState = PairingState.Paired
@@ -104,7 +110,7 @@ class RemoteController(
             errors.record("tv", e.message ?: "TV error")
             _state.update { it.copy(lastError = e.message) }
         }
-        return TvState.On(nowPlaying, volume?.level, volume?.muted ?: false, output, inputs, apps) to pairing
+        return TvState.On(nowPlaying, volume?.level, volume?.muted ?: false, output, inputs, apps, range.first, range.last) to pairing
     }
 
     private suspend fun readSonos(): SonosState {
@@ -167,6 +173,43 @@ class RemoteController(
     suspend fun volumeUp() = volumeStep(+1)
     suspend fun volumeDown() = volumeStep(-1)
 
+    /** The volume bar: an absolute level on whichever device the buttons are driving (SCOPE.md §9.2). */
+    suspend fun setVolumeLevel(level: Int) = action {
+        val target = _state.value.volumeTarget
+        val bounded = level.coerceIn(_state.value.volumeRange.first, _state.value.volumeRange.last)
+        when (target) {
+            VolumeTarget.SONOS -> {
+                sonos!!.setVolume(bounded)
+                updateSonos { it.copy(volume = bounded) }
+            }
+            VolumeTarget.TV -> {
+                tv.setVolume(bounded)
+                val v = runCatching { tv.volume() }.getOrNull()
+                updateTv { it.copy(volume = v?.level ?: bounded, muted = v?.muted ?: it.muted) }
+            }
+        }
+    }
+
+    /**
+     * Re-read only the volume, cheaply, so the bar follows changes made on the Sonos app or a physical remote
+     * without waiting for the full refresh (SCOPE.md §9.3). Never raises busy and never surfaces an error.
+     */
+    suspend fun refreshVolume() {
+        when (_state.value.volumeTarget) {
+            VolumeTarget.SONOS -> {
+                val s = sonos ?: return
+                val level = runCatching { s.volume() }.getOrNull() ?: return
+                val muted = runCatching { s.muted() }.getOrNull() ?: false
+                updateSonos { it.copy(volume = level, muted = muted) }
+            }
+            VolumeTarget.TV -> {
+                if (_state.value.tv !is TvState.On) return
+                val v = runCatching { tv.volume() }.getOrNull() ?: return
+                updateTv { it.copy(volume = v.level, muted = v.muted, volumeMin = v.min, volumeMax = v.max) }
+            }
+        }
+    }
+
     suspend fun volumeStep(delta: Int) = action {
         when (_state.value.volumeTarget) {
             VolumeTarget.SONOS -> {
@@ -218,10 +261,27 @@ class RemoteController(
 
     suspend fun typeText(text: String) = action {
         if (!tv.textInputActive()) {
-            _state.update { it.copy(lastError = "Open a text box on the TV first — a search field or a sign-in box — then send again.") }
+            _state.update { it.copy(lastError = NO_TEXT_BOX) }
             return@action
         }
         tv.typeText(text)
+    }
+
+    /**
+     * Spoken search (SCOPE.md §9.4): type into a text box that is already open, or ask the TV to open one first
+     * with its assistant key and type into that. If neither works, say so plainly rather than failing silently.
+     * Whether this TV's assistant key yields a text field is the one part still to confirm on the real set.
+     */
+    suspend fun searchTv(query: String) = action {
+        if (!tv.textInputActive()) {
+            runCatching { tv.sendKey("Assists") }
+            delay(searchOpenDelayMs)
+            if (!tv.textInputActive()) {
+                _state.update { it.copy(lastError = NO_SEARCH_BOX) }
+                return@action
+            }
+        }
+        tv.typeText(query)
     }
 
     suspend fun setOutput(output: SoundOutput) = action {
@@ -304,6 +364,7 @@ class RemoteController(
             is VoiceCommand.NightMode -> setNightMode(cmd.on)
             is VoiceCommand.SpeechEnhancement -> setSpeechEnhancement(cmd.on)
             is VoiceCommand.TypeText -> typeText(cmd.text)
+            is VoiceCommand.SearchTv -> searchTv(cmd.query)
             is VoiceCommand.Unknown -> _state.update { it.copy(lastError = cmd.describe()) }
         }
         return cmd.describe()

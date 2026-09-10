@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
@@ -27,6 +28,10 @@ data class AppSettings(
     val cookie: String? = null,
     val cookieExpiresAt: Long? = null,
     val psk: String? = null,
+    /** Route volume through the TV so its own on-screen bar appears (SCOPE.md D11). Off by default. */
+    val volumeViaTv: Boolean = false,
+    /** Swipe pad instead of arrow buttons on the Navigate and Roku cards (SCOPE.md §9.1). */
+    val touchpad: Boolean = false,
 ) {
     val isConfigured: Boolean get() = !tvHost.isNullOrBlank()
 
@@ -53,6 +58,8 @@ class SettingsRepository(private val context: Context) : CredentialStore {
         val cookie = stringPreferencesKey("tv_cookie")
         val cookieExpiresAt = longPreferencesKey("tv_cookie_expires_at")
         val psk = stringPreferencesKey("tv_psk")
+        val volumeViaTv = booleanPreferencesKey("volume_via_tv")
+        val touchpad = booleanPreferencesKey("touchpad")
     }
 
     val settings: Flow<AppSettings> = context.hearthStore.data.map { it.toSettings() }
@@ -77,6 +84,8 @@ class SettingsRepository(private val context: Context) : CredentialStore {
             put(Keys.sonosHost, after.sonosHost); put(Keys.sonosName, after.sonosName); put(Keys.rokuHost, after.rokuHost); put(Keys.rokuName, after.rokuName)
             put(Keys.cookie, after.cookie); put(Keys.psk, after.psk)
             if (after.cookieExpiresAt == null) p.remove(Keys.cookieExpiresAt) else p[Keys.cookieExpiresAt] = after.cookieExpiresAt
+            p[Keys.volumeViaTv] = after.volumeViaTv
+            p[Keys.touchpad] = after.touchpad
         }
     }
 
@@ -97,5 +106,6 @@ class SettingsRepository(private val context: Context) : CredentialStore {
         tvHost = this[Keys.tvHost], tvMac = this[Keys.tvMac], tvModel = this[Keys.tvModel],
         sonosHost = this[Keys.sonosHost], sonosName = this[Keys.sonosName], rokuHost = this[Keys.rokuHost], rokuName = this[Keys.rokuName],
         cookie = this[Keys.cookie], cookieExpiresAt = this[Keys.cookieExpiresAt], psk = this[Keys.psk],
+        volumeViaTv = this[Keys.volumeViaTv] ?: false, touchpad = this[Keys.touchpad] ?: false,
     )
 }

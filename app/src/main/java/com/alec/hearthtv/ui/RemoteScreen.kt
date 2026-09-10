@@ -36,6 +36,7 @@ import androidx.compose.material.icons.rounded.KeyboardArrowDown
 import androidx.compose.material.icons.rounded.KeyboardArrowLeft
 import androidx.compose.material.icons.rounded.KeyboardArrowRight
 import androidx.compose.material.icons.rounded.KeyboardArrowUp
+import androidx.compose.material.icons.rounded.Gamepad
 import androidx.compose.material.icons.rounded.Menu
 import androidx.compose.material.icons.rounded.Mic
 import androidx.compose.material.icons.rounded.Pause
@@ -44,6 +45,7 @@ import androidx.compose.material.icons.rounded.PowerSettingsNew
 import androidx.compose.material.icons.rounded.RecordVoiceOver
 import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material.icons.rounded.Replay
+import androidx.compose.material.icons.rounded.OpenWith
 import androidx.compose.material.icons.rounded.Send
 import androidx.compose.material.icons.rounded.Settings
 import androidx.compose.material.icons.rounded.Stop
@@ -70,6 +72,8 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Snackbar
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
+import androidx.compose.material3.Slider
+import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Switch
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -98,6 +102,7 @@ import com.alec.hearthtv.protocol.bravia.SoundOutput
 import com.alec.hearthtv.protocol.bravia.TvApp
 import com.alec.hearthtv.protocol.bravia.TvInput
 import com.alec.hearthtv.protocol.roku.RokuApp
+import com.alec.hearthtv.remote.PadAction
 import com.alec.hearthtv.remote.PairingState
 import com.alec.hearthtv.remote.RemoteUiState
 import com.alec.hearthtv.remote.RokuState
@@ -141,6 +146,13 @@ fun RemoteScreen(vm: RemoteViewModel, onOpenSetup: () -> Unit, onOpenDiagnostics
         while (true) {
             delay(8000)
             vm.refreshQuiet()
+        }
+    }
+    // Volume alone, far more often, so the bar follows the Sonos app or a physical remote (SCOPE.md §9.3).
+    LaunchedEffect(Unit) {
+        while (true) {
+            delay(2000)
+            vm.refreshVolume()
         }
     }
     LaunchedEffect(ui.lastError) { ui.lastError?.let { snackbar.showSnackbar(it) } }
@@ -192,11 +204,11 @@ fun RemoteScreen(vm: RemoteViewModel, onOpenSetup: () -> Unit, onOpenDiagnostics
                 shown != null -> {
                     if (live == null) ReconnectingBanner(ui.tv)
                     if (ui.pairing is PairingState.NeedsPairing) PairingCard(onOpenSetup)
-                    VolumeCluster(ui, shown, onDown = { vm.volumeDown() }, onMute = { haptic.tick(); vm.toggleMute() }, onUp = { vm.volumeUp() })
+                    VolumeCluster(ui, onDown = { vm.volumeDown() }, onMute = { haptic.tick(); vm.toggleMute() }, onUp = { vm.volumeUp() }, onSet = { vm.setVolumeLevel(it) })
                     InputsRow(shown.inputs, shown.nowPlaying) { vm.selectInput(it) }
                     AppsRow(shown.apps, shown.nowPlaying) { vm.launchApp(it) }
-                    RokuCard(ui.roku, shown, onHome = { haptic.tick(); vm.rokuHome() }, onKey = { haptic.tick(); vm.rokuKey(it) }, onArrow = { vm.rokuKey(it) }, onLaunch = { haptic.tick(); vm.rokuLaunch(it) })
-                    DPad(onKey = press, onArrow = { vm.key(it) })
+                    RokuCard(ui.roku, shown, touchpad = settings?.touchpad == true, onTouchpad = { vm.setTouchpad(it) }, onHome = { haptic.tick(); vm.rokuHome() }, onKey = { haptic.tick(); vm.rokuKey(it) }, onArrow = { vm.rokuKey(it) }, onLaunch = { haptic.tick(); vm.rokuLaunch(it) })
+                    DPad(onKey = press, onArrow = { vm.key(it) }, touchpad = settings?.touchpad == true, onTouchpad = { vm.setTouchpad(it) })
                     MediaRow(onKey = press)
                     MoreKeys(onKey = press)
                     SoundCard(ui, shown, onFix = { vm.fixSound() }, onOutput = { vm.setOutput(it) }, onNight = { vm.setNightMode(it) }, onSpeech = { vm.setSpeechEnhancement(it) })
@@ -270,19 +282,46 @@ private fun PairingCard(onOpenSetup: () -> Unit) {
 }
 
 @Composable
-private fun VolumeCluster(ui: RemoteUiState, tv: TvState.On, onDown: () -> Unit, onMute: () -> Unit, onUp: () -> Unit) {
-    val sonos = ui.sonos as? SonosState.Ready
-    val (label, level, muted) = when (ui.volumeTarget) {
-        VolumeTarget.SONOS -> Triple("Sonos", sonos?.volume, sonos?.muted ?: false)
-        VolumeTarget.TV -> Triple("TV speakers", tv.volume, tv.muted)
+private fun VolumeCluster(ui: RemoteUiState, onDown: () -> Unit, onMute: () -> Unit, onUp: () -> Unit, onSet: (Int) -> Unit) {
+    val label = when (ui.volumeTarget) {
+        VolumeTarget.SONOS -> "Sonos"
+        VolumeTarget.TV -> if (ui.volumeViaTv) "the TV" else "TV speakers"
     }
+    val level = ui.volumeLevel
+    val muted = ui.volumeMuted
+    val range = ui.volumeRange
+    // While a finger is on the bar it owns the value; the device's own reading takes over again on release.
+    var dragging by remember { mutableStateOf(false) }
+    var dragValue by remember { mutableStateOf(0f) }
+    val shown = if (dragging) dragValue else (level ?: range.first).toFloat()
+
     Card(colors = CardDefaults.cardColors(containerColor = Slate), shape = RoundedCornerShape(20.dp)) {
         Column(Modifier.padding(14.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text("Volume", style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
-                Text("→ $label${level?.let { "  $it" } ?: ""}${if (muted) "  muted" else ""}", color = PaperDim, style = MaterialTheme.typography.bodyMedium)
+                Text(
+                    "$label  ${shown.toInt()}${if (muted) "  muted" else ""}",
+                    color = PaperDim, style = MaterialTheme.typography.bodyMedium,
+                )
             }
-            Spacer(Modifier.height(10.dp))
+            if (level != null) {
+                Slider(
+                    value = shown,
+                    onValueChange = { v ->
+                        dragging = true
+                        dragValue = v
+                        onSet(v.toInt())
+                    },
+                    onValueChangeFinished = {
+                        onSet(dragValue.toInt())
+                        dragging = false
+                    },
+                    valueRange = range.first.toFloat()..range.last.toFloat(),
+                    colors = SliderDefaults.colors(thumbColor = Ember, activeTrackColor = Ember, inactiveTrackColor = SlateLight),
+                )
+            } else {
+                Spacer(Modifier.height(10.dp))
+            }
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 HoldButton(Icons.Rounded.VolumeDown, "Volume down", onDown, Modifier.weight(1f).height(64.dp), shape = RoundedCornerShape(16.dp))
                 BigButton(Icons.Rounded.VolumeOff, if (muted) "Unmute" else "Mute", Modifier.weight(0.7f), onMute, tonal = true)
@@ -290,6 +329,38 @@ private fun VolumeCluster(ui: RemoteUiState, tv: TvState.On, onDown: () -> Unit,
             }
         }
     }
+}
+
+/** The toggle in a pad card's top right: arrow buttons or the swipe pad (SCOPE.md §9.1). */
+@Composable
+private fun PadModeToggle(touchpad: Boolean, onTouchpad: (Boolean) -> Unit) {
+    IconButton(onClick = { onTouchpad(!touchpad) }) {
+        Icon(
+            if (touchpad) Icons.Rounded.Gamepad else Icons.Rounded.OpenWith,
+            if (touchpad) "Use the arrow buttons" else "Use the swipe pad",
+            tint = if (touchpad) Ember else PaperDim,
+        )
+    }
+}
+
+/** IRCC key names for the TV's pad. */
+private fun tvKeyFor(action: PadAction) = when (action) {
+    PadAction.UP -> "Up"
+    PadAction.DOWN -> "Down"
+    PadAction.LEFT -> "Left"
+    PadAction.RIGHT -> "Right"
+    PadAction.OK -> "Confirm"
+    PadAction.BACK -> "Return"
+}
+
+/** Roku ECP key names for the Roku's pad. */
+private fun rokuKeyFor(action: PadAction) = when (action) {
+    PadAction.UP -> "Up"
+    PadAction.DOWN -> "Down"
+    PadAction.LEFT -> "Left"
+    PadAction.RIGHT -> "Right"
+    PadAction.OK -> "Select"
+    PadAction.BACK -> "Back"
 }
 
 @Composable
@@ -340,10 +411,16 @@ private fun AppsRow(apps: List<TvApp>, nowPlaying: String?, onLaunch: (String) -
 }
 
 @Composable
-private fun DPad(onKey: (String) -> Unit, onArrow: (String) -> Unit) {
-    Section("Navigate")
+private fun DPad(onKey: (String) -> Unit, onArrow: (String) -> Unit, touchpad: Boolean, onTouchpad: (Boolean) -> Unit) {
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Section("Navigate", Modifier.weight(1f))
+        PadModeToggle(touchpad, onTouchpad)
+    }
     Card(colors = CardDefaults.cardColors(containerColor = Slate), shape = RoundedCornerShape(20.dp)) {
         Column(Modifier.padding(12.dp).fillMaxWidth(), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            if (touchpad) {
+                Touchpad(onAction = { onKey(tvKeyFor(it)) })
+            } else {
             ArrowKey(Icons.Rounded.KeyboardArrowUp, "Up", onArrow)
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                 ArrowKey(Icons.Rounded.KeyboardArrowLeft, "Left", onArrow)
@@ -354,6 +431,7 @@ private fun DPad(onKey: (String) -> Unit, onArrow: (String) -> Unit) {
                 ArrowKey(Icons.Rounded.KeyboardArrowRight, "Right", onArrow)
             }
             ArrowKey(Icons.Rounded.KeyboardArrowDown, "Down", onArrow)
+            }
             Spacer(Modifier.height(4.dp))
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 SmallKey(Icons.Rounded.ArrowBack, "Back", Modifier.weight(1f)) { onKey("Return") }
@@ -372,12 +450,15 @@ private fun DPad(onKey: (String) -> Unit, onArrow: (String) -> Unit) {
  * screen — its own D-pad, transport keys and channel list. Limited mode and an unreachable box explain themselves.
  */
 @Composable
-private fun RokuCard(roku: RokuState, tv: TvState.On, onHome: () -> Unit, onKey: (String) -> Unit, onArrow: (String) -> Unit, onLaunch: (String) -> Unit) {
+private fun RokuCard(roku: RokuState, tv: TvState.On, touchpad: Boolean, onTouchpad: (Boolean) -> Unit, onHome: () -> Unit, onKey: (String) -> Unit, onArrow: (String) -> Unit, onLaunch: (String) -> Unit) {
     if (roku is RokuState.Absent) return
     val rokuInput = tv.inputs.firstOrNull { it.kind == InputKind.CEC_DEVICE && it.title.contains("roku", ignoreCase = true) }
     val inFront = rokuInput != null && (rokuInput.active || tv.nowPlaying == rokuInput.displayName)
     var forceOpen by rememberSaveable { mutableStateOf(false) }
-    Section("Roku")
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Section("Roku", Modifier.weight(1f))
+        if (roku is RokuState.Ready) PadModeToggle(touchpad, onTouchpad)
+    }
     Card(colors = CardDefaults.cardColors(containerColor = Slate), shape = RoundedCornerShape(20.dp)) {
         Column(Modifier.padding(14.dp).fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             when (roku) {
@@ -395,7 +476,7 @@ private fun RokuCard(roku: RokuState, tv: TvState.On, onHome: () -> Unit, onKey:
                         }
                     }
                     if (inFront || forceOpen) {
-                        RokuPad(onKey, onArrow)
+                        if (touchpad) Touchpad(onAction = { onKey(rokuKeyFor(it)) }) else RokuPad(onKey, onArrow)
                         RokuApps(roku.apps, roku.activeApp, onLaunch)
                     } else {
                         TextButton(onClick = { forceOpen = true }) { Text("Show the Roku controls anyway") }
