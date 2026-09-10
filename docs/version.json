@@ -1,7 +1,7 @@
 {
-    "apkUrl":  "https://github.com/Willits-Alec/hearth-tv/releases/latest/download/hearth-tv.apk",
-    "publishedAt":  "2026-09-10T15:18:58Z",
-    "versionCode":  1,
-    "versionName":  "0.0.1",
-    "notes":  "Stage 0: installs and launches; the remote arrives with the next builds."
+  "versionCode": 2,
+  "versionName": "0.1.0",
+  "apkUrl": "https://github.com/Willits-Alec/hearth-tv/releases/latest/download/hearth-tv.apk",
+  "notes": "First real build: setup wizard (find TV, PIN pairing, find Sonos), the remote screen (power, volume routed to the Sonos, inputs, apps, D-pad, sound, type on the TV) and Diagnostics with a self-test.",
+  "publishedAt": "2026-09-10T16:25:21Z"
 }
