@@ -1,7 +1,7 @@
 {
-  "versionCode": 8,
-  "versionName": "0.4.0",
+  "versionCode": 9,
+  "versionName": "0.5.0",
   "apkUrl": "https://github.com/Willits-Alec/hearth-tv/releases/latest/download/hearth-tv.apk",
-  "notes": "A real app icon, and a one-page guide linked from this page: setup, the volume, Fix the sound, typing on the TV, the microphone, the Roku, and what to do if something looks wrong.",
-  "publishedAt": "2026-09-10T18:50:27Z"
+  "notes": "A volume bar you can drag, a swipe pad instead of the arrow buttons if you prefer, volume that follows changes made on the Sonos app, an option to show the volume on the TV itself, and search by voice.",
+  "publishedAt": "2026-09-10T19:45:05Z"
 }
