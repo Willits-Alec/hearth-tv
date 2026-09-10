@@ -1,7 +1,7 @@
 {
-  "versionCode": 6,
-  "versionName": "0.3.0",
+  "versionCode": 7,
+  "versionName": "0.3.1",
   "apkUrl": "https://github.com/Willits-Alec/hearth-tv/releases/latest/download/hearth-tv.apk",
-  "notes": "The Roku is in: a Roku section appears once you pick the box in setup, with its own pad, transport keys and channel list, and it switches the TV to the Roku for you.",
-  "publishedAt": "2026-09-10T18:29:08Z"
+  "notes": "You can now add the Roku (or change the Sonos) from Diagnostics without pairing the TV again.",
+  "publishedAt": "2026-09-10T18:31:24Z"
 }
