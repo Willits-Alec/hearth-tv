@@ -117,7 +117,12 @@ class FakeBraviaServer : AutoCloseable {
                 }
                 result(id, "[]")
             }
-            "avContent" to "getCurrentExternalInputsStatus" -> fixture("bravia/getCurrentExternalInputsStatus.json", id)
+            // While the TV is on, CEC devices ("Roku Ultra", "Sonos Arc") appear as their own entries (probed 2026-09-10).
+            "avContent" to "getCurrentExternalInputsStatus" -> fixture(
+                if (power == "active") "bravia/getCurrentExternalInputsStatus_onRoku.json"
+                else "bravia/getCurrentExternalInputsStatus.json",
+                id,
+            )
             "avContent" to "setPlayContent" -> {
                 activeInputUri = params.first().jsonObject["uri"]!!.jsonPrimitive.content
                 activeAppUri = null
@@ -125,8 +130,14 @@ class FakeBraviaServer : AutoCloseable {
             }
             "avContent" to "getPlayingContentInfo" -> {
                 val uri = activeInputUri ?: return error(id, 7, "Illegal State")
-                val port = uri.substringAfter("port=", "")
-                result(id, """[{"uri":"$uri","source":"extInput:hdmi","title":"HDMI $port"}]""")
+                if (uri.startsWith("extInput:cec")) {
+                    // CEC devices come back with an empty source and the device name as title.
+                    val title = cecTitle(uri) ?: "HDMI device"
+                    result(id, """[{"uri":"$uri","source":"","title":"$title"}]""")
+                } else {
+                    val port = uri.substringAfter("port=", "")
+                    result(id, """[{"uri":"$uri","source":"extInput:hdmi","title":"HDMI $port"}]""")
+                }
             }
             "appControl" to "getApplicationList" -> fixture("bravia/getApplicationList.json", id)
             "appControl" to "setActiveApp" -> {
@@ -149,7 +160,7 @@ class FakeBraviaServer : AutoCloseable {
             raw.startsWith("-") -> volume - raw.drop(1).toInt()
             else -> raw.toInt()
         }.coerceIn(0, 100)
-        return result(id, "[]")
+        return result(id, "[0]")   // the real TV answers {"result":[0]} for setAudioVolume (probed 2026-09-10)
     }
 
     /**
@@ -200,6 +211,13 @@ class FakeBraviaServer : AutoCloseable {
         return MockResponse().setResponseCode(200)
             .setHeader("Content-Type", "text/xml; charset=\"utf-8\"")
             .setBody(soap.trim())
+    }
+
+    private fun cecTitle(uri: String): String? {
+        val list = json.parseToJsonElement(Fixtures.text("bravia/getCurrentExternalInputsStatus_onRoku.json"))
+            .jsonObject["result"]!!.jsonArray[0].jsonArray
+        return list.firstOrNull { it.jsonObject["uri"]?.jsonPrimitive?.content == uri }
+            ?.jsonObject?.get("title")?.jsonPrimitive?.content
     }
 
     // ── helpers ─────────────────────────────────────────────────────────────────────────────────────

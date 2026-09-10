@@ -61,15 +61,30 @@ class BraviaClientTest {
     }
 
     @Test fun `inputs carry the owner's labels and the eARC port`() = runTest {
+        tv.power = "standby"                       // the shape captured with the TV off: ports only, no CEC devices
         val inputs = client.inputs()
         assertEquals(5, inputs.size)
+        assertTrue(inputs.none { it.kind == InputKind.CEC_DEVICE })
         val game = inputs.first { it.uri == "extInput:hdmi?port=2" }
         assertEquals("Game", game.label)
         assertEquals("Game", game.displayName)
+        assertEquals(2, game.port)
         val arc = inputs.first { it.uri == "extInput:hdmi?port=3" }
         assertTrue(arc.connected)
         assertEquals("HDMI 3 (eARC/ARC)", arc.displayName)
         assertEquals("Roku", inputs.first { it.uri == "extInput:hdmi?port=4" }.displayName)
+    }
+
+    @Test fun `while the TV is on, CEC devices appear by name and the active port is flagged`() = runTest {
+        val inputs = client.inputs()
+        assertEquals(7, inputs.size)
+        val roku = inputs.first { it.kind == InputKind.CEC_DEVICE && it.title == "Roku Ultra" }
+        assertTrue(roku.connected)
+        assertEquals("Roku Ultra", roku.displayName)
+        assertEquals(2, roku.port)                 // the Roku really sits on HDMI 2; the owner's "Roku" label is on HDMI 4
+        assertTrue(inputs.any { it.kind == InputKind.CEC_DEVICE && it.title == "Sonos Arc" })
+        assertTrue(inputs.first { it.uri == "extInput:hdmi?port=2" }.active)
+        assertFalse(inputs.first { it.uri == "extInput:hdmi?port=4" }.active)
     }
 
     @Test fun `remote codes come from the TV, not a hard-coded table`() = runTest {
@@ -181,6 +196,12 @@ class BraviaClientTest {
         assertNotNull(np)
         assertEquals("extInput:hdmi?port=4", np!!.uri)
         assertEquals("HDMI 4", np.title)
+        // a CEC device: empty source, the device's name as title (probed 2026-09-10 with the Roku in front)
+        client.switchInput("extInput:cec?type=player&port=2&logicalAddr=4")
+        val cec = client.nowPlaying()!!
+        assertEquals("Roku Ultra", cec.title)
+        assertEquals("", cec.source)
+        assertTrue(cec.uri.startsWith("extInput:cec"))
     }
 
     @Test fun `sendKey resolves names and aliases through the IRCC table`() = runTest {

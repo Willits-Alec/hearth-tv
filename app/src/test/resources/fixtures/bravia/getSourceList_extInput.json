@@ -1,0 +1,16 @@
+{
+  "result": [
+    [
+      {
+        "source": "extInput:hdmi"
+      },
+      {
+        "source": "extInput:composite"
+      },
+      {
+        "source": "extInput:cec"
+      }
+    ]
+  ],
+  "id": 1
+}

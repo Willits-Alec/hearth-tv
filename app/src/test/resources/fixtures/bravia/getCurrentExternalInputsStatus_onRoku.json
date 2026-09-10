@@ -1,0 +1,63 @@
+{
+  "result": [
+    [
+      {
+        "uri": "extInput:cec?type=player&port=2&logicalAddr=4",
+        "title": "Roku Ultra",
+        "connection": true,
+        "label": "",
+        "icon": "meta:playbackdevice",
+        "status": ""
+      },
+      {
+        "uri": "extInput:cec?type=freeuse&port=3&logicalAddr=5",
+        "title": "Sonos Arc",
+        "connection": true,
+        "label": "",
+        "icon": "meta:freeuse",
+        "status": ""
+      },
+      {
+        "uri": "extInput:hdmi?port=1",
+        "title": "HDMI 1",
+        "connection": false,
+        "label": "",
+        "icon": "meta:hdmi",
+        "status": "false"
+      },
+      {
+        "uri": "extInput:hdmi?port=2",
+        "title": "HDMI 2",
+        "connection": true,
+        "label": "Game",
+        "icon": "meta:hdmi",
+        "status": "true"
+      },
+      {
+        "uri": "extInput:hdmi?port=3",
+        "title": "HDMI 3 (eARC/ARC)",
+        "connection": true,
+        "label": "",
+        "icon": "meta:hdmi",
+        "status": "true"
+      },
+      {
+        "uri": "extInput:hdmi?port=4",
+        "title": "HDMI 4",
+        "connection": false,
+        "label": "Roku",
+        "icon": "meta:hdmi",
+        "status": "false"
+      },
+      {
+        "uri": "extInput:composite?port=1",
+        "title": "Video",
+        "connection": false,
+        "label": "",
+        "icon": "meta:composite",
+        "status": ""
+      }
+    ]
+  ],
+  "id": 1
+}

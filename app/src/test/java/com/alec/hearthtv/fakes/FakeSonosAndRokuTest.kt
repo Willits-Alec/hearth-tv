@@ -71,6 +71,7 @@ class FakeSonosAndRokuTest {
     // ── Roku ────────────────────────────────────────────────────────────────────────────────────────
 
     @Test fun `roku in Limited mode answers device info and active app but refuses control`() = FakeRoku().use { r ->
+        r.limitedMode = true
         val (code, info) = get(r.baseUrl + "/query/device-info")
         assertEquals(200, code)
         assertTrue(info.contains("<model-number>4660X</model-number>"))
@@ -83,14 +84,16 @@ class FakeSonosAndRokuTest {
     }
 
     @Test fun `roku in Default mode takes keypresses and launches apps`() = FakeRoku().use { r ->
-        r.limitedMode = false
         assertEquals(200, post(r.baseUrl + "/keypress/Home"))
         assertEquals(200, post(r.baseUrl + "/keypress/Lit_a"))
         assertEquals(400, post(r.baseUrl + "/keypress/Bogus"))
         assertEquals(listOf("Home", "Lit_a"), r.keys)
-        assertTrue(get(r.baseUrl + "/query/apps").second.contains("""<app id="12" type="appl" version="1.0">Netflix</app>"""))
-        assertEquals(200, post(r.baseUrl + "/launch/12"))
-        assertEquals("Netflix", r.activeAppName)
+        val apps = get(r.baseUrl + "/query/apps").second
+        assertTrue(apps.contains("<app id=\"13\" type=\"appl\" version="))
+        assertTrue(apps.contains(">Prime Video</app>"))
+        assertTrue(r.apps.size > 20)
+        assertEquals(200, post(r.baseUrl + "/launch/13"))
+        assertEquals("Prime Video", r.activeAppName)
         assertEquals(404, post(r.baseUrl + "/launch/999999"))
     }
 }

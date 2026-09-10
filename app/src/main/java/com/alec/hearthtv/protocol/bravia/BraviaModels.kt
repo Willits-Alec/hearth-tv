@@ -46,6 +46,14 @@ enum class SoundOutput(val wire: String) {
     }
 }
 
+enum class InputKind { HDMI, CEC_DEVICE, COMPOSITE, OTHER }
+
+/**
+ * One entry of `getCurrentExternalInputsStatus`. While the TV is on, connected HDMI-CEC devices appear as their
+ * own entries (`extInput:cec?...`, titled by the device: "Roku Ultra", "Sonos Arc") alongside the raw HDMI ports.
+ * The owner's port labels can be stale ("Roku" sat on HDMI 4 while the Roku was on HDMI 2), so the UI shows CEC
+ * device names first and treats labels as hints.
+ */
 data class TvInput(
     val uri: String,
     val title: String,
@@ -54,8 +62,19 @@ data class TvInput(
     val active: Boolean,
     val icon: String?,
 ) {
-    /** The owner's own label ("Game", "Roku") when set, else the TV's name for the port. */
+    val kind: InputKind
+        get() = when {
+            uri.startsWith("extInput:cec") -> InputKind.CEC_DEVICE
+            uri.startsWith("extInput:hdmi") -> InputKind.HDMI
+            uri.startsWith("extInput:composite") -> InputKind.COMPOSITE
+            else -> InputKind.OTHER
+        }
+
+    /** The owner's own label ("Game") when set, else the TV's name for the port or the CEC device's name. */
     val displayName: String get() = label.ifBlank { title }
+
+    /** The HDMI port number when the URI carries one (`port=N`), for both HDMI and CEC entries. */
+    val port: Int? get() = Regex("port=(\\d+)").find(uri)?.groupValues?.get(1)?.toIntOrNull()
 }
 
 data class TvApp(val title: String, val uri: String, val icon: String?)

@@ -8,23 +8,28 @@ import okhttp3.mockwebserver.RecordedRequest
 /**
  * A stand-in for the Roku Ultra (4660X, Roku OS 15.3.4) on HDMI 4, speaking ECP on :8060.
  *
- * Observed 2026-09-10: the real box was in **Limited** network-access mode — `query/device-info` and
- * `query/active-app` answered, everything else returned "ECP command not allowed in Limited mode." The fake
- * starts in the mode the owner's box is actually in, so the app's "Roku is locked down, here is how to unlock
- * it" path gets tested first. The app list below is synthesized (the real one could not be captured yet) and
- * is replaced by a fixture once the Roku is switched to Default.
+ * Observed 2026-09-10: in **Limited** network-access mode only `query/device-info` and `query/active-app`
+ * answered; everything else returned "ECP command not allowed in Limited mode." The owner then switched the
+ * box to Default and the full app list was captured (`roku/roku_apps.xml`). The fake serves that list and can
+ * be flipped back to Limited to test the "here is how to unlock it" path.
  */
 class FakeRoku : AutoCloseable {
     val server = MockWebServer()
     val baseUrl: String get() = server.url("/").toString().trimEnd('/')
 
-    var limitedMode: Boolean = true
+    /** The owner switched the box from Limited to Default on 2026-09-10; tests flip this to exercise the locked path. */
+    var limitedMode: Boolean = false
     var activeAppId: String = "773622"
     var activeAppName: String = "Backdrops"
-    val apps: LinkedHashMap<String, String> = linkedMapOf(
-        "12" to "Netflix", "837" to "YouTube", "13" to "Prime Video", "2285" to "Hulu",
-        "291097" to "Disney Plus", "551012" to "Apple TV", "773622" to "Backdrops",
-    )
+    /** id -> name, parsed from the captured `query/apps` reply. */
+    val apps: LinkedHashMap<String, String> = LinkedHashMap<String, String>().apply {
+        val xml = runCatching { Fixtures.text("roku/roku_apps.xml") }.getOrNull()
+        if (xml != null) {
+            Regex("<app id=\"(\\d+)\"[^>]*>([^<]*)</app>").findAll(xml)
+                .forEach { put(it.groupValues[1], it.groupValues[2].replace("&amp;", "&")) }
+        }
+        if (isEmpty()) { put("13", "Prime Video"); put("837", "YouTube") }
+    }
     val keys = mutableListOf<String>()
 
     companion object {
@@ -62,6 +67,7 @@ class FakeRoku : AutoCloseable {
             )
             req.method == "GET" && path == "/query/apps" -> {
                 if (limitedMode) return limited()
+                runCatching { Fixtures.text("roku/roku_apps.xml") }.getOrNull()?.let { return xml(200, it) }
                 val items = apps.entries.joinToString("\n") { (id, name) -> "\t<app id=\"$id\" type=\"appl\" version=\"1.0\">$name</app>" }
                 xml(200, "<?xml version=\"1.0\" encoding=\"UTF-8\" ?>\n<apps>\n$items\n</apps>")
             }

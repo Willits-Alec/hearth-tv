@@ -3,7 +3,7 @@
     [
       {
         "target": "speaker",
-        "volume": 18,
+        "volume": 31,
         "mute": false,
         "maxVolume": 100,
         "minVolume": 0

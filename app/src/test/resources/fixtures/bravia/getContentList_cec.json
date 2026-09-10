@@ -1,0 +1,17 @@
+{
+  "result": [
+    [
+      {
+        "uri": "extInput:cec?type=player&port=2&logicalAddr=4",
+        "title": "Roku Ultra",
+        "index": 0
+      },
+      {
+        "uri": "extInput:cec?type=freeuse&port=3&logicalAddr=5",
+        "title": "Sonos Arc",
+        "index": 1
+      }
+    ]
+  ],
+  "id": 1
+}

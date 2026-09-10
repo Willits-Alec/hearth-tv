@@ -15,7 +15,8 @@ class FixturesTest {
         "sonos/sonos_device_description.xml", "sonos/sonos_GetVolume.xml", "sonos/sonos_GetMute.xml",
         "sonos/sonos_GetEQ_NightMode.xml", "sonos/sonos_GetEQ_DialogLevel.xml", "sonos/sonos_GetTransportInfo.xml",
         "sonos/sonos_GetMediaInfo.xml", "sonos/sonos_GetZoneGroupState.xml",
-        "roku/roku_device_info.xml", "roku/roku_active_app.xml", "roku/roku_root.xml", "roku/roku_error_limited_mode.txt",
+        "roku/roku_device_info.xml", "roku/roku_active_app.xml", "roku/roku_root.xml", "roku/roku_error_limited_mode.txt", "roku/roku_apps.xml",
+        "bravia/getCurrentExternalInputsStatus_onRoku.json", "bravia/getPlayingContentInfo_roku.json", "bravia/getVolumeInformation_standby.json",
     )
 
     private val forbidden = listOf(

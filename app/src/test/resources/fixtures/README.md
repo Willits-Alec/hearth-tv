@@ -14,6 +14,8 @@ values live in gitignored `local/SITE.md`. **Never hand-edit a fixture** — re-
 | accessControl_getMethodTypes | the `actRegister` signature — field is `nickname`, not `nick` |
 | getSystemInformation, getWolMode, getApplicationList (37 apps with launch URIs), getNetworkSettings | answer WITH the pairing cookie |
 | getVolumeInformation_standby | `[40005, "Display Is Turned off"]` — the volume query while the TV is in standby (the on-state `getVolumeInformation` is reconstructed from the probe log: speaker 18, unmuted, 0..100) |
+| getCurrentExternalInputsStatus_onRoku, getPlayingContentInfo_roku | the same two calls with the TV ON and the Roku in front: CEC devices appear as `extInput:cec?...` entries titled "Roku Ultra" / "Sonos Arc"; now-playing has an empty `source` and the device name as `title` |
+| getSchemeList, getSourceList_extInput, getContentList_cec | the TV's content tree: schemes `tv`/`extInput`, sources hdmi/composite/cec, and the CEC device list |
 | getPlayingContentInfo | `[7, "Illegal State"]` — what the TV says on the home screen / inside an app; "no content", not an error |
 | ircc_Display.xml | HTTP 200 SOAP reply to `X_SendIRCC` (Display key) with the cookie |
 | eureka_info | Cast endpoint `http://<tv>:8008/setup/eureka_info`, unauthenticated |
@@ -34,7 +36,6 @@ values live in gitignored `local/SITE.md`. **Never hand-edit a fixture** — re-
 | roku_device_info.xml | `GET /query/device-info` |
 | roku_active_app.xml | `GET /query/active-app` |
 | roku_root.xml | `GET /` (UPnP device description, with the HTTP headers as captured) |
-| roku_error_limited_mode.txt | what `query/apps`, `keypress` and `launch` return while the Roku's network access is **Limited** |
+| roku_error_limited_mode.txt | what `query/apps`, `keypress` and `launch` return while the Roku's network access is **Limited** (how the box was found) |
+| roku_apps.xml | `GET /query/apps` after the owner switched network access to Default (2026-09-10) |
 
-Missing until the Roku is switched to Default network access: `query/apps`. `FakeRoku` synthesizes an app list
-until then and starts in Limited mode, like the real box.
